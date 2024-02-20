@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "universal"
+version = "0.1.0"
+description = ""
+authors = ["wwfyde <wwfyde@163.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = {extras = ["all"], version = "^0.109.2"}
+requests = "^2.31.0"
+
+[tool.poetry.group.dev.dependencies]
+ipython = "^8.21.0"
+pytest = "^8.0.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
