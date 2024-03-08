@@ -29,7 +29,9 @@ venv.bak/
 # Python
 __pychache__
 *.pyc
+*.py[cod]
 poetry.lock
+/.coverage
 
 # Jupyter Notebook
 .ipynb_checkpoints
@@ -41,6 +43,8 @@ ipython_config.py
 ### JavaScript
 node_modules/
 package-lock.json
+yarn.lock
+
 
 ### zip rar tar.gz
 
