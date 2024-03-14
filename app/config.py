@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from pydantic import MySQLDsn, PostgresDsn, DirectoryPath
+from pydantic import MySQLDsn, PostgresDsn, DirectoryPath, RedisDsn
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -12,6 +12,10 @@ class Settings(BaseSettings):
     bot_token: str
     guild_id: str
     channel_id: str
+    application_id: str
+    bot_application_id: str
+    user_id: str
+    session_id: str
     interaction_url: str = 'https://discord.com/api/v9/interactions'
     redis_host: str
     redis_port: int
@@ -19,9 +23,30 @@ class Settings(BaseSettings):
     proxy_url: str
     httpx_timeout: int = 60 * 5
     log_level: str = 'DEBUG'
+    azure_api_url: str
+    azure_api_key: str
+    azure_api_instructions: str
+    concurrency_limit: int = 3
+    prefetch_count: int = 1
+    midjourney_rate_limit: int = 5
+    redis_texture_generation_result: str = 'molook:texture'
+    redis_expire_time: int = 60 * 60 * 24 * 15  # 15天
+    redis_dsn: RedisDsn = 'redis://@localhost:6379/0'
 
     mysql_dsn: str | MySQLDsn = 'mysql+mysqlconnector://<user>:<password>@<host>[:<port>]/<dbname>'
     pg_dsn: str | PostgresDsn = 'postgresql+psycopg://user:pass@host:5432/db'
+
+    # RABBITMQ
+    rabbitmq_url: str
+    texture_generation_queue: str  # 纹理生成队列
+
+    # Aliyun OSS
+    oss_access_key_id: str
+    oss_access_key_secret: str
+    oss_bucket_name: str
+    oss_endpoint: str
+    oss_storage_path: str
+    oss_domain: str | None = None
 
     model_config = SettingsConfigDict(
         env_file=('.env', '.env.local', '.env.prod', '.env.prod.local')

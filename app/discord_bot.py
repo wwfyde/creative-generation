@@ -1,20 +1,22 @@
+import json
 import re
 
 import discord
+import redis.asyncio as redis
 from discord import Message
 from discord.ext import commands
 from loguru import logger
-from redis import asyncio as redis
+from websockets.sync.client import connect
 
-from app.utils import download_image
+from app.utils import download_image, download_image_to_oss
 from app.worker import background_task
 from main import settings
 
-intents = discord.Intents.default()
+intents = discord.Intents.all()
 # intents = discord.Intents.all()  # 获取所有权限会报错
 intents.message_content = True
 # Bot 是Discord.Client的一个子类, 因此直接像Client一样传入proxy='proxy_url'即可
-bot = commands.Bot(command_prefix='!', intents=intents, proxy=settings.proxy_url)
+bot = commands.Bot(command_prefix='>', intents=intents, proxy=settings.proxy_url)
 
 
 @bot.command()
@@ -51,10 +53,43 @@ async def on_message(message: Message):
         logger.debug(f"{attachment.url=}, {attachment.description=}, {attachment.filename=}, {attachment.size=}, "
                      f"{attachment.height=}, {attachment.width=}, {attachment.proxy_url=}")
     # 通过 - 字符split message.content
-    prompt = message.content.split(' - ')[0].replace("*", "")
-    logger.debug(f"{prompt=}")
+    # prompt = message.content.split(' - ')[0].replace("*", "")
+    # logger.debug(f"{prompt=}")
+    # 监听 以fast或(turbo)结尾的消息
+    match = re.search(r' \(fast\)$| \(turbo\)$', message.content)
+    if match:
+        # 获取message_id message_hash 等
+        message_id = message.id
+        message_hash = message.attachments[0].id
+        # TODO 将数据发送到队列
+        match = re.search(r"<#(\d+)#>", message.content)
+        if match:
+            request_id = match.group(1)
+            image_urls = []
+            for attachment in message.attachments:
+                # 将图片上传到阿里云OSS并写入数据库
+                if attachment.content_type.startswith('image'):
+                    # 将图片上传到阿里云OSS
+                    attachment_image_urls = await download_image_to_oss(attachment.url, attachment.filename,
+                                                                        is_split=True)
+                    image_urls.extend(attachment_image_urls)
+            # TODO 将数据发送到redis
+            r = await redis.from_url(settings.redis_dsn.unicode_string())
 
-    # 监听放大信息
+            await r.set(f"{settings.redis_texture_generation_result}:{request_id}", json.dumps(image_urls))
+            logger.info(f"将{request_id=}生成结果发送到redis: {image_urls=}")
+            await r.close()
+
+
+
+        else:
+            # 过滤
+            pass
+
+            ...
+
+    return
+    # 监听放大信息 Upscale(Subtle), Upscale(Creative)
     match = re.search(r'Upscaled ', message.content)
     if match:
         logger.info("Upscaled image")
@@ -62,6 +97,7 @@ async def on_message(message: Message):
             if attachment.content_type.startswith('image'):
                 logger.info(f"Downloading image {attachment.filename}")
                 await download_image(attachment.url, settings.project_dir.joinpath('assets'), attachment.filename)
+    # 监听图像选择
     match = re.search(r'Image #([1-4])', message.content)
     if match:
         number = match.group(1)
@@ -70,6 +106,22 @@ async def on_message(message: Message):
             if attachment.content_type.startswith('image'):
                 logger.info(f"Downloading image {attachment.filename}, {number=}")
                 await download_image(attachment.url, settings.project_dir.joinpath('assets'), attachment.filename)
+    #
+    if message.content.startswith('**'):
+        logger.debug(f"来自Midjourney Bot 的消息{message.content}")
+        if '(fast)' in message.content:
+            logger.debug("图像处理完成")
+            # 获取图像
+            for attachment in message.attachments:
+                if attachment.content_type.startswith('image'):
+                    logger.debug(f"Downloading image {attachment.filename}")
+                    # Image.open(attachment.url)
+                    with connect("ws://localhost:8000/api/ws") as websocket:
+                        logger.info(f"id: 图像生成完成:{attachment.url} ")
+                        # TODO send json message
+                        websocket.send(attachment.url)
+
+                    await download_image(attachment.url, settings.project_dir.joinpath('assets'), attachment.filename)
 
     if message.content.startswith('>'):
         # TODO 接收到消息后逻辑
@@ -85,6 +137,7 @@ async def on_message(message: Message):
             await message.channel.send(task)
         else:
             await message.channel.send('No tasks available')
+        await bot.process_commands(message)
 
     # TODO 回调函数
     ...

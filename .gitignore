@@ -51,3 +51,6 @@ yarn.lock
 *.zip
 *.rar
 *.tar.gz
+
+# assets
+assets/

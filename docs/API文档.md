@@ -57,3 +57,50 @@ Content-Type: Application/json
 ```
 
 ### 500
+
+# ws
+
+```http 
+ws /ws/trigger_id
+```
+
+# 队列
+
+队列中信息为
+
+```json
+{
+    "config": {
+        "batch_size": 4
+    },
+    "requestId": "",
+    "subTaskId": "",
+    "taskId": "",
+    "taskType": "TEXTURE",
+    "mqParamsId": "",
+    "textrue": {
+        "prompt": "",
+        "tags": [
+            ""
+        ],
+        "styleId": "",
+        "aspect": ""
+    }
+}
+```
+
+结果队列必须参数
+
+```json
+{
+    "data": {
+        "images": [],
+        "requestId": "",
+        "subTaskId": "",
+        "taskId": "",
+        "mqParamsId": ""
+    }
+    "code": ""
+}
+
+```

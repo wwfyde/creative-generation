@@ -52,3 +52,24 @@
     "analytics_location": "slash_ui"
 }
 ```
+
+### parameters
+
+https://docs.midjourney.com/docs
+
+```shell
+--style raw
+
+--aspect, -a  
+
+# relax mode 当快速生成模式用量完毕后, 采用慢速模式生成
+--relax 
+
+# style references 
+-sref <url> 
+-sref <url1> <url2> ... 
+
+--sw
+
+--stylize
+```
