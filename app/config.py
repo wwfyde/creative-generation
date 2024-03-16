@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     azure_api_instructions: str
     concurrency_limit: int = 3
     prefetch_count: int = 1
-    midjourney_rate_limit: int = 5
+    midjourney_rate_limit: int | float = 1 / 4
     redis_texture_generation_result: str = 'molook:texture'
     redis_expire_time: int = 60 * 60 * 24 * 15  # 15天
     redis_dsn: RedisDsn = 'redis://@localhost:6379/0'
@@ -39,6 +39,8 @@ class Settings(BaseSettings):
     # RABBITMQ
     rabbitmq_url: str
     texture_generation_queue: str  # 纹理生成队列
+    texture_generation_result_queue: str  # 纹理生成结果队列
+    rabbitmq_exchange: str
 
     # Aliyun OSS
     oss_access_key_id: str
@@ -48,8 +50,11 @@ class Settings(BaseSettings):
     oss_storage_path: str
     oss_domain: str | None = None
 
+    # 用于测试, 避免多次调用midjourney api
+    test: bool = False
+
     model_config = SettingsConfigDict(
-        env_file=('.env', '.env.local', '.env.prod', '.env.prod.local')
+        env_file=('.env', '.env.local', '.env.staging', '.env.prod', '.env.prod.local')
     )
 
 

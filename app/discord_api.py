@@ -32,21 +32,31 @@ async def handle_imagine_prompt(imagine_prompt: ImaginePrompt, **kwargs) -> str 
     # 获取trigger_id 用于标记任务
 
     # 将提示词翻译为英文
-    logger.debug(f"{imagine_prompt.prompt=}")
+    logger.debug(f"待翻译消息: {imagine_prompt.prompt=}")
     if imagine_prompt.prompt:
+        # TODO 暂时禁用翻译
         user_prompt = await translate_by_azure(imagine_prompt.prompt, settings.azure_api_instructions)
+        logger.info(f"通过Azure OpenAI翻译prompt, 翻译结果: {user_prompt}")
+        # user_prompt = imagine_prompt.prompt
+        if user_prompt is None:
+            logger.error("翻译异常, 尝试采用原字符串")
+            user_prompt = imagine_prompt.prompt
     else:
-        user_prompt = None
+        logger.error("提示词不存在")
+        user_prompt = imagine_prompt.prompt
     logger.debug(f"{user_prompt=}")
 
     params = []
-    # TODO 组装参数
+    # 组装参数
     for key, value in imagine_prompt.parameter.model_dump(exclude_unset=True).items():
         if isinstance(value, bool) and value:
             params.append(f"--{key}")
+        elif isinstance(value, bool) and not value:
+            pass
+
         else:
             params.append(f"--{key} {value}")
-
+    # params.append('--relax')
     params_str = ' '.join(params)
     logger.debug(f"{params_str=}")
 
@@ -167,6 +177,7 @@ async def imagine(prompt: str) -> bool:
         logger.info(response.text)
         if response.status_code in range(200, 300):
             logger.info("分发任务成功")
+            logger.debug(f"{response.status_code=}{response.content=}")
             # 初始化result_queue
 
             return True

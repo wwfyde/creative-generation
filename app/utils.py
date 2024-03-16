@@ -100,6 +100,7 @@ async def download_image_to_oss(
         url: str,
         filename: str,
         is_split: bool = False,
+        request_id: int = None
 ) -> List[str]:
     response = httpx.get(url, timeout=settings.httpx_timeout, proxies={
         "http://": settings.proxy_url,
@@ -111,7 +112,8 @@ async def download_image_to_oss(
 
         # 如果需要分割, 需要先分割后上传
         if is_split:
-            file_prefix = PurePath(filename).stem
+            # file_prefix = PurePath(filename).stem.split('_')[-1]
+            # file_prefix = f"{request_id}"
             file_suffix = PurePath(filename).suffix
             with Image.open(io.BytesIO(response.content)) as img:
                 # Get the width and height of the original image
@@ -132,7 +134,7 @@ async def download_image_to_oss(
                     cropped_image.save(img_stream, format=img.format)
                     img_stream.seek(0)
                     image_url = upload_image(
-                        f"{file_prefix}_{position}_{index + 1}_{file_suffix}",
+                        f"{request_id}_{position}_{index + 1}_{file_suffix}",
                         img_stream.getvalue(),
                         prefix=settings.oss_storage_path,
                         rename=False,
@@ -143,6 +145,9 @@ async def download_image_to_oss(
             return image_urls
 
         # 将图像保存到OSS
+        file_suffix = PurePath(filename).suffix
+        filename = f"{request_id}{file_suffix}"
+
         image_url = upload_image(
             filename,
             response.content,
@@ -150,6 +155,7 @@ async def download_image_to_oss(
             rename=False,
             domain=settings.oss_domain
         )
+
         logger.info(f"上传图像生成成功, 图像链接: {image_url}")
         return [image_url]
 
@@ -233,7 +239,7 @@ async def translate_by_azure(
             data = response.json()
             logger.debug(data)
             message: str = data['choices'][0]['message']['content']
-            print(message)
+            print(f"Azure OpenAI处理后的消息: {message}")
             return message
 
 
@@ -319,22 +325,6 @@ def upload_image(filename: str,
 
 
 if __name__ == '__main__':
-    print(gen_uuid(return_type="str"))
-    print(gen_uuid(return_type="hex"))
-    print(gen_uuid(return_type="int"))
-
-    # download_image(
-    #     "https://cdn.discordapp.com/attachments/1076097007850111020/1215298059882463252/xhcyw2_test_da8197c7-b78c-4518-9daa-c48c42906925.png?ex=65fc3d84&is=65e9c884&hm=f7a3f4afd279dbcf87942424e347f0a3cf7a28aabcbefb44667bf91b7e9d14ab&",
-    #     directory=settings.project_dir.joinpath('assets'),
-    #     filename="xhcyw2_test_da8197c7-b78c-4518-9daa-c48c42906925.png"
-    # )
-    key = settings.azure_api_key
-    from time import perf_counter
-
-    start = perf_counter()
-    caption = ask_azure_openai(
-        "https://static.molook.cn/default/0e783463d3/f727633923.jpg", "形容这张图", key
-    )
-    print(caption)
-    print(perf_counter() - start)
-    asyncio.run(translate_by_azure("Hi, I am out", "请将中文翻译为英文, 如果是英文则返回原内容"))
+    # url = upload_image('demo.text', 'hello, 世界!')
+    # print(url)
+    asyncio.run(translate_by_azure("Photo of 樱花,日式,山海纹,富士山 sitting on fire", settings.azure_api_instructions))

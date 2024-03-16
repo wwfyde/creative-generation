@@ -1,0 +1,13 @@
+[Unit]
+Description= midjourney composite service
+Requires=midjourney-bot.service midjourney-consumer.service
+After=midjourney-bot.service midjourney-consumer.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash -c 'echo midjourney started'
+ExecStop=/bin/bash -c 'echo midjourney stoped'
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

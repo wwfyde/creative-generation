@@ -1,0 +1,14 @@
+[Unit]
+Description=Midjourney Consumer Service
+After=midjourney-bot.service
+
+[Service]
+Type=simple
+User=molook
+WorkDirectory=/home/molook/projects/midjourney
+ExecStart=venv/bin/python aio_consumer.py
+Restart=always
+
+
+[Install]
+WantedBy=multi-user.target

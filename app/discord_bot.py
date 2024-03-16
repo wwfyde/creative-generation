@@ -1,6 +1,7 @@
 import json
 import re
 
+import aio_pika
 import discord
 import redis.asyncio as redis
 from discord import Message
@@ -26,7 +27,7 @@ async def ping(ctx):
 
 @bot.event
 async def on_ready():
-    logger.debug(f"Logged in as {bot.user} (ID: {bot.user.id})")
+    # logger.debug(f"Logged in as {bot.user} (ID: {bot.user.id})")
     logger.success(f"Logged in as {bot.user} (ID: {bot.user.id})")
 
 
@@ -38,23 +39,22 @@ async def on_message(message: Message):
         logger.debug(f"来自机器人: {bot.user}的消息")
         return
     logger.info(f"{message.author} sent a message: {message.content}")
-    logger.debug(f"{message.author} sent a message: {message.content}")
-    logger.debug(f"{message.attachments=}")
 
     # 处理图像附件
-    for attachment in message.attachments:
-
-        if attachment.content_type.startswith('image'):
-            # 保持图像并分割
-            await download_image(attachment.url, settings.project_dir.joinpath('assets'), attachment.filename,
-                                 is_split=True)
-            logger.debug(f"{attachment.content_type=}, {attachment.filename=}, {attachment.size=}, "
-                         f"{attachment.height=}, {attachment.width=}, {attachment.proxy_url=}")
-        logger.debug(f"{attachment.url=}, {attachment.description=}, {attachment.filename=}, {attachment.size=}, "
-                     f"{attachment.height=}, {attachment.width=}, {attachment.proxy_url=}")
+    # for attachment in message.attachments:
+    #
+    #     if attachment.content_type.startswith('image'):
+    #         # 保持图像并分割
+    #         await download_image(attachment.url, settings.project_dir.joinpath('assets'), attachment.filename,
+    #                              is_split=True)
+    #         logger.debug(f"{attachment.content_type=}, {attachment.filename=}, {attachment.size=}, "
+    #                      f"{attachment.height=}, {attachment.width=}, {attachment.proxy_url=}")
+    #     logger.debug(f"{attachment.url=}, {attachment.description=}, {attachment.filename=}, {attachment.size=}, "
+    #                  f"{attachment.height=}, {attachment.width=}, {attachment.proxy_url=}")
     # 通过 - 字符split message.content
     # prompt = message.content.split(' - ')[0].replace("*", "")
     # logger.debug(f"{prompt=}")
+
     # 监听 以fast或(turbo)结尾的消息
     match = re.search(r' \(fast\)$| \(turbo\)$', message.content)
     if match:
@@ -66,18 +66,59 @@ async def on_message(message: Message):
         if match:
             request_id = match.group(1)
             image_urls = []
+            attachments_meta = []
             for attachment in message.attachments:
                 # 将图片上传到阿里云OSS并写入数据库
+                attachments_meta.append(dict(
+                    id=attachment.id,
+                    width=attachment.width,
+                    height=attachment.height,
+                    filename=attachment.filename,
+                    url=attachment.url,
+                    contentType=attachment.content_type
+                ))
                 if attachment.content_type.startswith('image'):
                     # 将图片上传到阿里云OSS
                     attachment_image_urls = await download_image_to_oss(attachment.url, attachment.filename,
-                                                                        is_split=True)
+                                                                        is_split=True, request_id=request_id)
                     image_urls.extend(attachment_image_urls)
+
+            # TODO 将生成结果发送到rabbitmq队列
+            body = {
+                "code": 200,
+                "data": {
+                    "images": image_urls,
+                    "requestId": request_id,
+                    "messageId": message_id,
+                    "messageHash": message_hash,
+                    "messageContent": message.content,
+                    "attachments": attachments_meta
+                }
+            }
+            body_str = json.dumps(body)
+            connection = await aio_pika.connect_robust(
+                settings.rabbitmq_url
+            )
+            async with connection:
+                route_key = settings.texture_generation_result_queue
+                channel = await connection.channel()
+                exchange = await channel.declare_exchange(settings.rabbitmq_exchange,
+                                                          type=aio_pika.ExchangeType.TOPIC,
+                                                          durable=True)
+                queue = await channel.declare_queue(route_key, durable=True)
+                await queue.bind(exchange, route_key)
+
+                await exchange.publish(
+                    aio_pika.Message(body=body_str.encode()),
+                    routing_key=route_key
+                )
+                logger.debug(f"将{request_id}生成结果发送到RabbitMQ: {body_str}")
             # TODO 将数据发送到redis
+
             r = await redis.from_url(settings.redis_dsn.unicode_string())
 
-            await r.set(f"{settings.redis_texture_generation_result}:{request_id}", json.dumps(image_urls))
-            logger.info(f"将{request_id=}生成结果发送到redis: {image_urls=}")
+            await r.set(f"{settings.redis_texture_generation_result}:{request_id}", body_str)
+            logger.info(f"将{request_id=}生成结果发送到redis: {body_str=}")
             await r.close()
 
 
