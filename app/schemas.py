@@ -35,6 +35,7 @@ class ImaginePrompt(ImagineBase):
     request_id: int
     prompt: str
     tags: List[str] | None = None
+    instructions: str | None = None
     substitution: ImagineSubstitution | None = None
     parameter: ImagineParameter | None = None
 

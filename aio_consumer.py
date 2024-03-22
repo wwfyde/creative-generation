@@ -68,6 +68,7 @@ async def process_message(message: aio_pika.abc.AbstractIncomingMessage):
             texture = session.get(Texture, task_dict['data']['texture_id'])
             # 变量置换
             texture_prompt = ', '.join(texture.prompt)
+            texture_instructions = texture.instructions
             # 参数翻译
             # TODO 增加避免中文
             # for key, value in task_dict['substitution'].items():

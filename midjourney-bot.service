@@ -5,8 +5,10 @@ After=midjourney-bot.service
 [Service]
 Type=simple
 User=molook
-WorkDirectory=/home/molook/projects/midjourney
-ExecStart=venv/bin/python bot_task.py
+WorkingDirectory=/home/molook/projects/midjourney
+ExecStart=/home/molook/projects/midjourney/venv/bin/python bot_task.py
+StandardOutput=file:/home/molook/projects/midjourney/bot.log
+StandardError=inherit
 Restart=always
 
 

@@ -35,7 +35,8 @@ async def handle_imagine_prompt(imagine_prompt: ImaginePrompt, **kwargs) -> str 
     logger.debug(f"待翻译消息: {imagine_prompt.prompt=}")
     if imagine_prompt.prompt:
         # TODO 暂时禁用翻译
-        user_prompt = await translate_by_azure(imagine_prompt.prompt, settings.azure_api_instructions)
+        instruction = imagine_prompt.instructions if imagine_prompt.instructions is None else settings.azure_api_instructions
+        user_prompt = await translate_by_azure(imagine_prompt.prompt, instruction)
         logger.info(f"通过Azure OpenAI翻译prompt, 翻译结果: {user_prompt}")
         # user_prompt = imagine_prompt.prompt
         if user_prompt is None:

@@ -28,7 +28,7 @@ target_metadata = models.Base.metadata
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
-env_files = ['.env', '.env.local', '.env.prod']
+env_files = ['.env', '.env.local']
 for env_file in env_files:
     env_file = Path(__file__).resolve().parent.parent.joinpath(env_file)
     print(env_file)
