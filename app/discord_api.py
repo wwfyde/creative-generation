@@ -1,6 +1,7 @@
 """
 Discord Midjourney Bot API, 通过API模拟与Midjourney进行交互
 """
+import time
 
 import httpx
 import redis.asyncio as redis
@@ -8,7 +9,7 @@ from loguru import logger
 
 from app import settings
 from app.schemas import CallbackData, ImaginePrompt
-from app.utils import translate_by_azure
+from app.utils import translate_by_azure, translate_by_kimi
 
 # 获取消息
 MESSAGE_URL = f"https://discord.com/api/v9/channels/{settings.channel_id}/messages"
@@ -34,16 +35,25 @@ async def handle_imagine_prompt(imagine_prompt: ImaginePrompt, **kwargs) -> str 
     # 将提示词翻译为英文
     logger.debug(f"待翻译消息: {imagine_prompt.prompt=}")
     if imagine_prompt.prompt:
-        # TODO 暂时禁用翻译
-        instruction = imagine_prompt.instructions if imagine_prompt.instructions is None else settings.azure_api_instructions
-        user_prompt = await translate_by_azure(imagine_prompt.prompt, instruction)
+        start = time.time()
+        instruction = imagine_prompt.instructions if imagine_prompt.instructions is not None else settings.default_instructions
+
+        try:
+            user_prompt = await translate_by_azure(imagine_prompt.prompt, instruction)
+        except Exception as exc:
+            user_prompt = None
         logger.info(f"通过Azure OpenAI翻译prompt, 翻译结果: {user_prompt}")
         # user_prompt = imagine_prompt.prompt
         if user_prompt is None:
-            logger.error("翻译异常, 尝试采用原字符串")
-            user_prompt = imagine_prompt.prompt
+            logger.error("Azure翻译异常, 使用月之暗面Moonshot(Kimi) API")
+            logger.debug(f"用户提示词: {imagine_prompt.prompt}, 指令: {instruction}")
+            try:
+                user_prompt = await translate_by_kimi(imagine_prompt.prompt, instruction)
+            except Exception as exc:
+                user_prompt = imagine_prompt.prompt
+        logger.info(f"调用翻译API耗时: {(time.time() - start):.3f}秒")
     else:
-        logger.error("提示词不存在")
+        logger.error("提示词不存在, 尝试使用 prompt参数")
         user_prompt = imagine_prompt.prompt
     logger.debug(f"{user_prompt=}")
 

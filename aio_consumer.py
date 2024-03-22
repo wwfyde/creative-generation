@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app import settings
 from app.db import engine
 from app.discord_api import handle_imagine_prompt, imagine
-from app.models import Texture
+from app.models import PatternPreset
 from app.schemas import ImaginePrompt
 from app.utils import RateLimiter
 
@@ -65,7 +65,7 @@ async def process_message(message: aio_pika.abc.AbstractIncomingMessage):
             return
 
         with Session(engine) as session:
-            texture = session.get(Texture, task_dict['data']['texture_id'])
+            texture = session.get(PatternPreset, task_dict['data']['texture_id'])
             # 变量置换
             texture_prompt = ', '.join(texture.prompt)
             texture_instructions = texture.instructions

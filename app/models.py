@@ -23,11 +23,11 @@ class Generation(Base):
 
 # f风格  有很多图, 标签字段
 # TODO 风格表
-class Texture(Base):
+class PatternPreset(Base):
     """
     纹理, 纹理风格
     """
-    __tablename__ = "texture"
+    __tablename__ = "pattern_preset"
     __table_args__ = {
         'comment': '纹理'
     }

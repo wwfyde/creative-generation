@@ -25,7 +25,9 @@ class Settings(BaseSettings):
     log_level: str = 'DEBUG'
     azure_api_url: str
     azure_api_key: str
-    azure_api_instructions: str
+    default_instructions: str
+    kimi_api_url: str
+    kimi_api_key: str
     concurrency_limit: int = 3
     prefetch_count: int = 1
     midjourney_rate_limit: int | float = 1 / 4

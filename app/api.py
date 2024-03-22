@@ -10,7 +10,7 @@ from starlette.websockets import WebSocketDisconnect
 from app.config import settings
 from app.dependency import DBSession
 from app.discord_api import handle_imagine_prompt
-from app.models import Texture
+from app.models import PatternPreset
 from app.schemas import ImaginePrompt
 from app.worker import background_task
 
@@ -102,7 +102,7 @@ async def db_get(
         db: DBSession
 
 ):
-    texture = db.get(Texture, 1)
+    texture = db.get(PatternPreset, 1)
 
     return texture
 

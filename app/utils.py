@@ -11,8 +11,10 @@ import requests
 from PIL import Image
 from fastapi import HTTPException
 from loguru import logger
+from openai import OpenAI
 from pydantic import DirectoryPath
 from requests.adapters import HTTPAdapter
+from tenacity import retry, wait_fixed, stop_after_attempt
 from urllib3 import Retry
 
 from app import settings
@@ -215,6 +217,7 @@ def ask_azure_openai(image, prompt, api_key, timeout=10):
         return f"Failed to parse the API response: {e}\n{response.text}"
 
 
+@retry(wait=wait_fixed(3), stop=stop_after_attempt(3))
 async def translate_by_azure(
         message: str,
         instructions: str,
@@ -235,12 +238,35 @@ async def translate_by_azure(
         end_time = asyncio.get_event_loop().time()
         # 获取接口响应时间
         logger.debug(f"{end_time - start_time=}")
+        response.raise_for_status()
         if response.status_code == 200:
             data = response.json()
             logger.debug(data)
             message: str = data['choices'][0]['message']['content']
             print(f"Azure OpenAI处理后的消息: {message}")
             return message
+
+
+@retry(wait=wait_fixed(3), stop=stop_after_attempt(3))
+async def translate_by_kimi(
+        message: str,
+        instructions: str
+):
+    client = OpenAI(
+        api_key=settings.kimi_api_key,
+        base_url=settings.kimi_api_url
+    )
+    completion = client.chat.completions.create(
+        model="moonshot-v1-8k",
+        messages=[
+            {"role": "system",
+             "content": instructions},
+            {"role": "user", "content": message}
+        ],
+        temperature=0.3,
+
+    )
+    return completion.choices[0].message.content
 
 
 class RateLimiter:
@@ -327,4 +353,6 @@ def upload_image(filename: str,
 if __name__ == '__main__':
     # url = upload_image('demo.text', 'hello, 世界!')
     # print(url)
-    asyncio.run(translate_by_azure("Photo of 樱花,日式,山海纹,富士山 sitting on fire", settings.azure_api_instructions))
+    # asyncio.run(translate_by_azure("Photo of 樱花,日式,山海纹,富士山 sitting on fire", settings.azure_api_instructions))
+    asyncio.run(translate_by_kimi('你好，我叫李雷，1+1等于多少？', settings.default_instructions))
+    ...
