@@ -57,6 +57,28 @@ async def process_message(message: aio_pika.abc.AbstractIncomingMessage):
     async with message.process():
 
         try:
+            # 从消息队列获取任务,并转换为Python dict对象
+            # {
+            #     "data": {
+            #         "config": {
+            #             "batch_size": 4
+            #         },
+            #         "parameter": {
+            #             "aspect": "4:3",
+            #             "tile": false
+            #         },
+            #         "prompt": "条形,平滑",
+            #         "request_id": "1772855157141704704",
+            #         "substitution": {
+            #             "subject": ""
+            #         },
+            #         "tags": [],
+            #         "texture_id": "1"
+            #     },
+            #     "sub_task_id": "1772855157112344578",
+            #     "task_id": "1772844263187845120",
+            #     "task_type": "TEXTURE"
+            # }
             task_dict: dict = json.loads(message.body.decode())
         except json.JSONDecodeError as exc:
             detail = f" [x] Received message is not json format: {task_dict=}"
@@ -65,10 +87,13 @@ async def process_message(message: aio_pika.abc.AbstractIncomingMessage):
             return
 
         with Session(engine) as session:
+            # 根据风格获取纹理配置
             texture = session.get(PatternPreset, task_dict['data']['texture_id'])
-            # 变量置换
-            texture_prompt = ', '.join(texture.prompt)
-            texture_instructions = texture.instructions
+            default = dict(
+                default_prompt=', '.join(texture.prompt),
+                instructions=texture.instructions,
+                default_parameter=texture.parameters
+            )
             # 参数翻译
             # TODO 增加避免中文
             # for key, value in task_dict['substitution'].items():
@@ -78,15 +103,17 @@ async def process_message(message: aio_pika.abc.AbstractIncomingMessage):
             #     task_dict['substitution'][key] = value
 
             # 参数置换,
-            prompt = texture_prompt.format(**task_dict['data']['substitution'])
-            logger.debug(f"参数置换后的提示词: {prompt}")
+            # s = Template(texture_prompt)
+            # s.
+            # prompt = texture_prompt.format(**task_dict['data']['substitution'])
+            # logger.debug(f"参数置换后的提示词: {prompt}")
             # 参数组装
         # 翻译
 
         # 将 参数置换后的提示词作为Discord Midjourney /imagine Prompt 的一部分
-        task_dict['data']['prompt'] = prompt
+        # task_dict['data']['prompt'] = prompt
         # 参数校验
-        imagine_prompt = ImaginePrompt(**task_dict['data'])
+        imagine_prompt = ImaginePrompt(**task_dict['data'], **default)
 
         # task = ImaginePrompt(request_id=task_dict['request_id'], **task_dict['data'])
         # 处理提示词

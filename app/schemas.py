@@ -11,8 +11,10 @@ class ImagineParameter(BaseModel):
     aspect: str | None = '1:1'
     texture_id: int | None = None
     chaos: int | None = None
-    style_reference: str | None = None
-    character_reference: str | None = None
+    sref: str | None = None  # style_reference
+    sw: int | None = None
+    cref: str | None = None  # character_reference
+    cw: int | None = None
     quality: int | None = None
     style: str | None = None
     stylize: int | None = None
@@ -34,6 +36,8 @@ class ImagineSubstitution(BaseModel):
 class ImaginePrompt(ImagineBase):
     request_id: int
     prompt: str
+    default_prompt: str | None = None
+    default_parameter: list[str] | None = None
     tags: List[str] | None = None
     instructions: str | None = None
     substitution: ImagineSubstitution | None = None

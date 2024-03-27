@@ -22,19 +22,21 @@ async def main() -> None:
             "task_type": "TEXTURE",
             "data": {
                 "request_id": 435678888,
-                "texture_id": 1,
-                "prompt": "",
+                "texture_id": 2,
+                "prompt": "樱花, 日式, 山海纹, 富士山",
                 "config": {
                     "batch_size": 4
                 },
                 "substitution": {
                     # "subject": "a girl"
-                    "subject": "樱花, 日式, 山海纹, 富士山"
+                    # "subject": "樱花, 日式, 山海纹, 富士山"
 
                 },
                 "parameter": {
-                    "aspect": "4:3",
-                    "tile": True
+                    "aspect": "1:1",
+                    "tile": True,
+                    # "sref": "https://s.mj.run/uNNgfOox2LY",
+                    # "sw": 1000
                 },
                 "tags": [""]
             }

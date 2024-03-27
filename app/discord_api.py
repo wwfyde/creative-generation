@@ -37,11 +37,12 @@ async def handle_imagine_prompt(imagine_prompt: ImaginePrompt, **kwargs) -> str 
     if imagine_prompt.prompt:
         start = time.time()
         instruction = imagine_prompt.instructions if imagine_prompt.instructions is not None else settings.default_instructions
+        logger.info(f"大模型指令(llm instruction): {instruction}")
 
         try:
             user_prompt = await translate_by_azure(imagine_prompt.prompt, instruction)
         except Exception as exc:
-            user_prompt = None
+            user_prompt = ""
         logger.info(f"通过Azure OpenAI翻译prompt, 翻译结果: {user_prompt}")
         # user_prompt = imagine_prompt.prompt
         if user_prompt is None:
@@ -50,23 +51,27 @@ async def handle_imagine_prompt(imagine_prompt: ImaginePrompt, **kwargs) -> str 
             try:
                 user_prompt = await translate_by_kimi(imagine_prompt.prompt, instruction)
             except Exception as exc:
-                user_prompt = imagine_prompt.prompt
+                user_prompt = ""
         logger.info(f"调用翻译API耗时: {(time.time() - start):.3f}秒")
     else:
-        logger.error("提示词不存在, 尝试使用 prompt参数")
-        user_prompt = imagine_prompt.prompt
+        logger.error("提示词不存在, 使用默认提示词")
+        user_prompt = ""
     logger.debug(f"{user_prompt=}")
 
-    params = []
+    params = imagine_prompt.default_parameter if imagine_prompt.default_parameter else []
     # 组装参数
     for key, value in imagine_prompt.parameter.model_dump(exclude_unset=True).items():
         if isinstance(value, bool) and value:
             params.append(f"--{key}")
         elif isinstance(value, bool) and not value:
+            # 删除该参数
+            if f"--{key}" in params:
+                params.remove(f"--{key}")
             pass
 
         else:
-            params.append(f"--{key} {value}")
+            # 应该将参数添加到列表开头, 开头具有更高的优先级
+            params.insert(0, f"--{key} {value}")
     # params.append('--relax')
     params_str = ' '.join(params)
     logger.debug(f"{params_str=}")
@@ -75,8 +80,7 @@ async def handle_imagine_prompt(imagine_prompt: ImaginePrompt, **kwargs) -> str 
     # with Session(engine) as session:
     #     texture = session.get(Texture, imagine_prompt.style_id)
     # 提示词格式 <#request_id#> prompt parameters
-
-    return f"{PROMPT_PREFIX}{imagine_prompt.request_id}{PROMPT_SUFFIX} {user_prompt} {params_str}"
+    return f"{PROMPT_PREFIX}{imagine_prompt.request_id}{PROMPT_SUFFIX} {user_prompt}. {imagine_prompt.default_prompt} {params_str}"
 
 
 async def callback(data: CallbackData, r: redis.Redis) -> None:
