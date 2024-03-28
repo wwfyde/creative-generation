@@ -1,6 +1,7 @@
 """
 Discord Midjourney Bot API, 通过API模拟与Midjourney进行交互
 """
+import string
 import time
 
 import httpx
@@ -34,13 +35,15 @@ async def handle_imagine_prompt(imagine_prompt: ImaginePrompt, **kwargs) -> str 
 
     # 将提示词翻译为英文
     logger.debug(f"待翻译消息: {imagine_prompt.prompt=}")
+    logger.debug(f"基础提示词: {imagine_prompt.default_prompt=}")
     if imagine_prompt.prompt:
         start = time.time()
         instruction = imagine_prompt.instructions if imagine_prompt.instructions is not None else settings.default_instructions
         logger.info(f"大模型指令(llm instruction): {instruction}")
-
+        instruction = string.Template(instruction).substitute(prompt=imagine_prompt.default_prompt)
         try:
-            user_prompt = await translate_by_azure(imagine_prompt.prompt, instruction)
+            user_prompt = await translate_by_azure(f"{imagine_prompt.default_prompt}\n\n{imagine_prompt.prompt}",
+                                                   instruction)
         except Exception as exc:
             user_prompt = ""
         logger.info(f"通过Azure OpenAI翻译prompt, 翻译结果: {user_prompt}")
@@ -49,7 +52,8 @@ async def handle_imagine_prompt(imagine_prompt: ImaginePrompt, **kwargs) -> str 
             logger.error("Azure翻译异常, 使用月之暗面Moonshot(Kimi) API")
             logger.debug(f"用户提示词: {imagine_prompt.prompt}, 指令: {instruction}")
             try:
-                user_prompt = await translate_by_kimi(imagine_prompt.prompt, instruction)
+                user_prompt = await translate_by_kimi(f"{imagine_prompt.default_prompt}\n\n{imagine_prompt.prompt}",
+                                                      instruction)
             except Exception as exc:
                 user_prompt = ""
         logger.info(f"调用翻译API耗时: {(time.time() - start):.3f}秒")
@@ -80,7 +84,9 @@ async def handle_imagine_prompt(imagine_prompt: ImaginePrompt, **kwargs) -> str 
     # with Session(engine) as session:
     #     texture = session.get(Texture, imagine_prompt.style_id)
     # 提示词格式 <#request_id#> prompt parameters
-    return f"{PROMPT_PREFIX}{imagine_prompt.request_id}{PROMPT_SUFFIX} {user_prompt}. {imagine_prompt.default_prompt} {params_str}"
+    if not user_prompt:
+        user_prompt = imagine_prompt.default_prompt
+    return f"{PROMPT_PREFIX}{imagine_prompt.request_id}{PROMPT_SUFFIX} {user_prompt}. {params_str}"
 
 
 async def callback(data: CallbackData, r: redis.Redis) -> None:
