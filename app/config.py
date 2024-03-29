@@ -31,6 +31,8 @@ class Settings(BaseSettings):
     concurrency_limit: int = 3
     prefetch_count: int = 1
     midjourney_rate_limit: int | float = 1 / 4
+    prompt_prefix: str
+    prompt_suffix: str
     redis_texture_generation_result: str = 'molook:texture'
     redis_expire_time: int = 60 * 60 * 24 * 15  # 15天
     redis_dsn: RedisDsn = 'redis://@localhost:6379/0'
@@ -56,7 +58,7 @@ class Settings(BaseSettings):
     test: bool = False
 
     model_config = SettingsConfigDict(
-        env_file=('.env', '.env.local', '.env.staging', '.env.prod', '.env.prod.local')
+        env_file=('.env', '.env.local', '.env.staging', '.env.prod')
     )
 
 

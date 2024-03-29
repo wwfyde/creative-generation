@@ -62,7 +62,7 @@ async def on_message(message: Message):
         message_id = message.id
         message_hash = message.attachments[0].id
         # TODO 将数据发送到队列
-        match = re.search(r"<#(\d+)#>", message.content)
+        match = re.search(rf"{settings.prompt_prefix}(\d+){settings.prompt_suffix}", message.content)
         if match:
             request_id = match.group(1)
             image_urls = []

@@ -22,9 +22,6 @@ proxies = {
     "https://": settings.proxy_url
 }
 
-PROMPT_PREFIX = "<#"
-PROMPT_SUFFIX = "#>"
-
 
 async def handle_imagine_prompt(imagine_prompt: ImaginePrompt, **kwargs) -> str | None:
     """
@@ -87,7 +84,7 @@ async def handle_imagine_prompt(imagine_prompt: ImaginePrompt, **kwargs) -> str 
 
     if not user_prompt:
         user_prompt = imagine_prompt.default_prompt
-    return f"{PROMPT_PREFIX}{imagine_prompt.request_id}{PROMPT_SUFFIX} {user_prompt}. {params_str}"
+    return f"{settings.prompt_prefix}{imagine_prompt.request_id}{settings.prompt_suffix} {user_prompt}. {params_str}"
 
 
 async def callback(data: CallbackData, r: redis.Redis) -> None:
