@@ -120,6 +120,7 @@ async def process_message(message: aio_pika.abc.AbstractIncomingMessage):
         prompt = await handle_imagine_prompt(imagine_prompt)
         # 速率限制, 最高1Command/3s
         logger.info(f"discord command 消息体: {prompt=}")
+        # TODO 将提示词记录到数据库
         await rate_limiter.wait()
 
         # TODO 使用sleep 代替耗时任务

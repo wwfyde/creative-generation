@@ -40,7 +40,7 @@ async def handle_imagine_prompt(imagine_prompt: ImaginePrompt, **kwargs) -> str 
         start = time.time()
         instruction = imagine_prompt.instructions if imagine_prompt.instructions is not None else settings.default_instructions
         logger.info(f"大模型指令(llm instruction): {instruction}")
-        instruction = string.Template(instruction).substitute(prompt=imagine_prompt.default_prompt)
+        instruction = string.Template(instruction).safe_substitute(prompt=imagine_prompt.default_prompt)
         try:
             user_prompt = await translate_by_azure(f"{imagine_prompt.default_prompt}\n\n{imagine_prompt.prompt}",
                                                    instruction)
@@ -67,7 +67,7 @@ async def handle_imagine_prompt(imagine_prompt: ImaginePrompt, **kwargs) -> str 
     for key, value in imagine_prompt.parameter.model_dump(exclude_unset=True).items():
         if isinstance(value, bool) and value:
             params.append(f"--{key}")
-        elif isinstance(value, bool) and not value:
+        elif isinstance(value, bool) and value is False:
             # 删除该参数
             if f"--{key}" in params:
                 params.remove(f"--{key}")
@@ -84,6 +84,7 @@ async def handle_imagine_prompt(imagine_prompt: ImaginePrompt, **kwargs) -> str 
     # with Session(engine) as session:
     #     texture = session.get(Texture, imagine_prompt.style_id)
     # 提示词格式 <#request_id#> prompt parameters
+
     if not user_prompt:
         user_prompt = imagine_prompt.default_prompt
     return f"{PROMPT_PREFIX}{imagine_prompt.request_id}{PROMPT_SUFFIX} {user_prompt}. {params_str}"
