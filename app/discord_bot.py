@@ -56,7 +56,7 @@ async def on_message(message: Message):
     # logger.debug(f"{prompt=}")
 
     # 监听 以fast或(turbo)结尾的消息
-    match = re.search(r' \(fast\)$| \(turbo\)$', message.content)
+    match = re.search(r' \(fast\)$| \(turbo\)$| \(relaxed\)$', message.content)
     if match:
         # 获取message_id message_hash 等
         message_id = message.id
