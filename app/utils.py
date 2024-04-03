@@ -264,7 +264,7 @@ async def translate_by_kimi(
             {"role": "user", "content": message}
         ],
         # 翻译效果不理想, 降低温度, 以保证一致性
-        temperature=0.2,
+        temperature=1,
 
     )
     return completion.choices[0].message.content
