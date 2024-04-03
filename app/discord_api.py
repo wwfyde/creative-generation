@@ -35,7 +35,7 @@ async def handle_imagine_prompt(imagine_prompt: ImaginePrompt, **kwargs) -> str 
     logger.debug(f"基础提示词: {imagine_prompt.default_prompt=}")
     if imagine_prompt.prompt:
         start = time.time()
-        instruction = imagine_prompt.instructions if imagine_prompt.instructions is not None else settings.default_instructions
+        instruction = imagine_prompt.instructions if imagine_prompt.instructions else settings.default_instructions
         logger.info(f"大模型指令(llm instruction): {instruction}")
         instruction = string.Template(instruction).safe_substitute(prompt=imagine_prompt.default_prompt)
         try:
