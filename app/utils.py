@@ -263,7 +263,8 @@ async def translate_by_kimi(
              "content": instructions},
             {"role": "user", "content": message}
         ],
-        temperature=0.3,
+        # 翻译效果不理想, 降低温度, 以保证一致性
+        temperature=0.2,
 
     )
     return completion.choices[0].message.content
@@ -307,6 +308,29 @@ class RateLimiter:
                 self.tokens -= tokens
                 break
             await asyncio.sleep(self.refill_time)
+
+
+def unified_api(
+        message: str,
+        instructions: str,
+        api_key: str,
+        base_url: str,
+):
+    client = OpenAI(
+        api_key=api_key,
+        base_url=base_url
+    )
+    completion = client.chat.completions.create(
+        model="moonshot-v1-8k",
+        messages=[
+            {"role": "system",
+             "content": instructions},
+            {"role": "user", "content": message}
+        ],
+        temperature=0.3,
+
+    )
+    return completion.choices[0].message.content
 
 
 def upload_image(filename: str,

@@ -21,9 +21,9 @@ async def main() -> None:
             "sub_task_id": "",
             "task_type": "TEXTURE",
             "data": {
-                "request_id": 435678888,
-                "texture_id": 2,
-                "prompt": "樱花, 日式, 山海纹, 富士山",
+                "request_id": 4356744388518,
+                "texture_id": 3,
+                "prompt": "月亮",
                 "config": {
                     "batch_size": 4
                 },

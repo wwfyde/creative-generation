@@ -1,8 +1,8 @@
 from datetime import datetime
 from typing import Optional, List
 
-from sqlalchemy import Column, Integer, Boolean, DateTime, String, JSON  # noqa
-from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase  # noqa
+from sqlalchemy import Column, Integer, Boolean, DateTime, String, JSON, ForeignKey  # noqa
+from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase, relationship  # noqa
 
 
 class Base(DeclarativeBase):
@@ -37,10 +37,20 @@ class PatternPreset(Base):
     prompt: Mapped[List[str]] = mapped_column(JSON, comment="纹理提示")
     # is_tile: Mapped[bool] = mapped_column(Boolean, comment="是否无缝材质")
     instructions: Mapped[Optional[str]] = mapped_column(String(2048), comment="指令")
+    category_id: Mapped[int] = mapped_column(ForeignKey("pattern_preset_category.id"))
     tags: Mapped[Optional[List[str]]] = mapped_column(JSON, comment="标签")
     parameters: Mapped[Optional[List[str]]] = mapped_column(JSON, comment="命令参数")
     # aspect: Mapped[Optional[str]] = mapped_column(String(12), comment="图像宽高比")
     description: Mapped[Optional[str]] = mapped_column(String(1024), comment="风格描述")
+    created_at: Mapped[datetime] = mapped_column(default=datetime.now, comment="创建时间")
+    updated_at: Mapped[datetime] = mapped_column(default=datetime.now, onupdate=datetime.now, comment="更新时间")
+
+
+class PatternPresetCategory(Base):
+    __tablename__ = "pattern_preset_category"
+    id: Mapped[int] = mapped_column(primary_key=True, index=True, comment="纹理类别ID")
+    name: Mapped[str] = mapped_column(String(128), comment="纹理类别")
+    # pattern_presets: Mapped["PatternPreset"] = relationship(back_populates="pattern_preset_category")
     created_at: Mapped[datetime] = mapped_column(default=datetime.now, comment="创建时间")
     updated_at: Mapped[datetime] = mapped_column(default=datetime.now, onupdate=datetime.now, comment="更新时间")
 

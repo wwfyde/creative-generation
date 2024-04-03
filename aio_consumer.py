@@ -4,6 +4,7 @@ import json
 import aio_pika
 import redis.asyncio as redis
 from loguru import logger
+from snowflake import Snowflake, SnowflakeGenerator
 from sqlalchemy.orm import Session
 
 from app import settings
@@ -125,14 +126,20 @@ async def process_message(message: aio_pika.abc.AbstractIncomingMessage):
 
         # TODO 使用sleep 代替耗时任务
         test = settings.test
+        print(test)
         if test:
             logger.warning("当前处于测试状态")
             await asyncio.sleep(10)
         else:
+            # 生成随机数 epoch 纪元参考自discord
+            sf = Snowflake.parse(1225001209962692608, 1420070400000)
+            gen = SnowflakeGenerator.from_snowflake(sf)
+            nonce = str(next(gen))
             logger.info(
-                f"Send imagine task to midjourney bot(discord channel). channel_id: {settings.channel_id}, request_id: {imagine_prompt.request_id}")
+                f"Send imagine task to midjourney bot(discord channel). "
+                f"channel_id: {settings.channel_id}, request_id: {imagine_prompt.request_id}, nonce: {nonce}")
 
-            await imagine(prompt)
+            await imagine(prompt, nonce)
 
         print("图像生成完成")
         # r = await redis.from_url(settings.redis_dsn.unicode_string())

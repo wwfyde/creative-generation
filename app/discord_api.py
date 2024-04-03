@@ -114,10 +114,11 @@ async def callback(data: CallbackData, r: redis.Redis) -> None:
     #     await client.post(CALLBACK_URL, json=data.model_dump())
 
 
-def handle_payload(type_: int, data: dict, extra_params: dict = None) -> dict:
+def handle_payload(type_: int, nonce: str, data: dict, extra_params: dict = None) -> dict:
     """
     payload 处理
     :param type_:
+    :param nonce:
     :param data:
     :param extra_params:
     :return:
@@ -127,8 +128,9 @@ def handle_payload(type_: int, data: dict, extra_params: dict = None) -> dict:
         "application_id": settings.application_id,
         "guild_id": settings.guild_id,
         "channel_id": settings.channel_id,
-        "session_id": "a826741b9ad6d6ce09b1acfe7ed5e3bb",
-        "data": data  # application command object
+        "session_id": settings.session_id,
+        "data": data,  # application command object
+        "nonce": nonce,
     }
     # 处理额外参数
     if extra_params:
@@ -136,9 +138,32 @@ def handle_payload(type_: int, data: dict, extra_params: dict = None) -> dict:
     return payload
 
 
-async def imagine(prompt: str) -> bool:
+async def imagine(prompt: str, nonce: str) -> bool:
     """
     /imagine prompt
+    {"type":2,"application_id":"936929561302675456","guild_id":"1076097007850111017","channel_id":"1076097007850111020","session_id":"aa6cd72b34ccb37e8b615dc4f9688da7","data":{"version":"1166847114203123795","id":"938956540159881230","name":"imagine","type":1,"options":[{"type":3,"name":"prompt","value":"the legend of Big Foot yeti by Joan Cornella, \"BELIEVE\" written on top  --style  raw  --ar  5:7  --stylize  25"}],"application_command":{"id":"938956540159881230","type":1,"application_id":"936929561302675456","version":"1166847114203123795","name":"imagine","description":"Create images with Midjourney","options":[{"type":3,"name":"prompt","description":"The prompt to imagine","required":true,"description_localized":"The prompt to imagine","name_localized":"prompt"}],"dm_permission":true,"integration_types":[0],"global_popularity_rank":1,"description_localized":"Create images with Midjourney","name_localized":"imagine"},"attachments":[]},"nonce":"1224974236855042048","analytics_location":"slash_ui"}
+
+    {
+  "type": 2,
+  "guild_id": "$guild_id",
+  "channel_id": "$channel_id",
+  "application_id": "936929561302675456",
+  "session_id": "$session_id",
+  "nonce": "$nonce",
+  "data": {
+    "version": "1166847114203123795",
+    "id": "938956540159881230",
+    "name": "imagine",
+    "type": 1,
+    "options": [
+      {
+        "type": 3,
+        "name": "prompt",
+        "value": "$prompt"
+      }
+    ]
+  }
+}
     :return:
     """
     data = {
@@ -156,7 +181,7 @@ async def imagine(prompt: str) -> bool:
         "application_command": {
             "id": "938956540159881230",
             "type": 1,
-            "application_id": settings.application_id,
+            "application_id": "936929561302675456",
             "version": "1166847114203123795",
             "name": "imagine",
             "description": "Create images with Midjourney",
@@ -170,6 +195,7 @@ async def imagine(prompt: str) -> bool:
                     "name_localized": "prompt"
                 }
             ],
+            "dm_permission": True,
             "integration_types": [
                 0
             ],
@@ -177,9 +203,34 @@ async def imagine(prompt: str) -> bool:
             "description_localized": "Create images with Midjourney",
             "name_localized": "imagine"
         },
-        "attachments": []
+        "attachments": [],
+        # "application_command": {
+        #     "id": "938956540159881230",
+        #     "type": 1,
+        #     "application_id": settings.application_id,
+        #     "version": "1166847114203123795",
+        #     "name": "imagine",
+        #     "description": "Create images with Midjourney",
+        #     "options": [
+        #         {
+        #             "type": 3,
+        #             "name": "prompt",
+        #             "description": "The prompt to imagine",
+        #             "required": True,
+        #             "description_localized": "The prompt to imagine",
+        #             "name_localized": "prompt"
+        #         }
+        #     ],
+        #     "integration_types": [
+        #         0
+        #     ],
+        #     "global_popularity_rank": 1,
+        #     "description_localized": "Create images with Midjourney",
+        #     "name_localized": "imagine"
+        # },
+        # "attachments": []
     }
-    payload = handle_payload(2, data, {})
+    payload = handle_payload(2, nonce, data, {})
     logger.debug(payload)
     print(payload)
     async with httpx.AsyncClient(timeout=settings.httpx_timeout, proxies=proxies) as client:
@@ -351,3 +402,17 @@ async def turbo():
     {"type":2,"application_id":"936929561302675456","guild_id":"1076097007850111017","channel_id":"1076097007850111020","session_id":"5bb831fad8ed93e2aeed9b7b4f1a37d2","data":{"version":"1124132684143271997","id":"1124132684143271996","name":"turbo","type":1,"options":[],"application_command":{"id":"1124132684143271996","type":1,"application_id":"936929561302675456","version":"1124132684143271997","name":"turbo","description":"Switch to turbo mode","integration_types":[0],"global_popularity_rank":18,"options":[],"description_localized":"Switch to turbo mode","name_localized":"turbo"},"attachments":[]},"nonce":"1217311770322927616","analytics_location":"slash_ui"}
     """
     ...
+
+
+async def fast():
+    """
+    {"type":2,"application_id":"936929561302675456","guild_id":"1076097007850111017","channel_id":"1076097007850111020","session_id":"e587ddde4e5f1018987df676adf9cd52","data":{"version":"987795926183731231","id":"972289487818334212","name":"fast","type":1,"options":[],"application_command":{"id":"972289487818334212","type":1,"application_id":"936929561302675456","version":"987795926183731231","name":"fast","description":"Switch to fast mode","dm_permission":true,"integration_types":[0],"global_popularity_rank":10,"options":[],"description_localized":"Switch to fast mode","name_localized":"fast"},"attachments":[]},"nonce":"1224184418860531712","analytics_location":"slash_ui"}
+    """
+
+    ...
+
+
+async def relax():
+    """
+
+    """

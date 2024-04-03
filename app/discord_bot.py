@@ -4,7 +4,7 @@ import re
 import aio_pika
 import discord
 import redis.asyncio as redis
-from discord import Message
+from discord import Message, Interaction
 from discord.ext import commands
 from loguru import logger
 from websockets.sync.client import connect
@@ -28,7 +28,7 @@ async def ping(ctx):
 @bot.event
 async def on_ready():
     # logger.debug(f"Logged in as {bot.user} (ID: {bot.user.id})")
-    logger.success(f"Logged in as {bot.user} (ID: {bot.user.id})")
+    logger.success(f"Logged in as {bot.user} (BOT APPLICATION ID: {bot.user.id})")
 
 
 @bot.event
@@ -61,6 +61,8 @@ async def on_message(message: Message):
         # 获取message_id message_hash 等
         message_id = message.id
         message_hash = message.attachments[0].id
+        # 获取
+        nonce = message.nonce
         # TODO 将数据发送到队列
         match = re.search(rf"{settings.prompt_prefix}(\d+){settings.prompt_suffix}", message.content)
         if match:
@@ -84,6 +86,7 @@ async def on_message(message: Message):
                     image_urls.extend(attachment_image_urls)
 
             # TODO 将生成结果发送到rabbitmq队列
+            # logger.info(f"请求ID: {request_id}, 随机数: {nonce}")
             body = {
                 "code": 200,
                 "data": {
@@ -92,7 +95,8 @@ async def on_message(message: Message):
                     "messageId": message_id,
                     "messageHash": message_hash,
                     "messageContent": message.content,
-                    "attachments": attachments_meta
+                    "attachments": attachments_meta,
+                    "nonce": nonce
                 }
             }
             body_str = json.dumps(body)
@@ -182,6 +186,11 @@ async def on_message(message: Message):
 
     # TODO 回调函数
     ...
+
+
+@bot.event
+async def on_interaction(interaction: Interaction):
+    logger.debug(f"message:{interaction.message}, command: {interaction.message}")
 
 
 @bot.event
