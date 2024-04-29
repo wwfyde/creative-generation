@@ -10,7 +10,7 @@ from loguru import logger
 
 from app import settings
 from app.schemas import CallbackData, ImaginePrompt
-from app.utils import translate_by_azure, translate_by_kimi
+from app.utils import translate_by_kimi, unified_api
 
 # 获取消息
 MESSAGE_URL = f"https://discord.com/api/v9/channels/{settings.channel_id}/messages"
@@ -39,9 +39,11 @@ async def handle_imagine_prompt(imagine_prompt: ImaginePrompt, **kwargs) -> str 
         logger.info(f"大模型指令(llm instruction): {instruction}")
         instruction = string.Template(instruction).safe_substitute(prompt=imagine_prompt.default_prompt)
         try:
-            user_prompt = await translate_by_azure(f"{imagine_prompt.default_prompt}\n\n{imagine_prompt.prompt}",
-                                                   instruction)
+            user_prompt = unified_api(
+                message=f"{imagine_prompt.default_prompt}\n\n{imagine_prompt.prompt}",
+                instructions=instruction)
         except Exception as exc:
+            logger.warning(f"调用unified-api失败, 错误提示: {exc}")
             user_prompt = ""
         logger.info(f"通过Azure OpenAI翻译prompt, 翻译结果: {user_prompt}")
         # user_prompt = imagine_prompt.prompt
@@ -51,7 +53,7 @@ async def handle_imagine_prompt(imagine_prompt: ImaginePrompt, **kwargs) -> str 
             try:
                 user_prompt = await translate_by_kimi(f"{imagine_prompt.default_prompt}\n\n{imagine_prompt.prompt}",
                                                       instruction)
-            except Exception as exc:
+            except Exception:
                 user_prompt = ""
         logger.info(f"调用翻译API耗时: {(time.time() - start):.3f}秒")
     else:
@@ -84,7 +86,7 @@ async def handle_imagine_prompt(imagine_prompt: ImaginePrompt, **kwargs) -> str 
 
     if not user_prompt:
         user_prompt = imagine_prompt.default_prompt
-    return f"{settings.prompt_prefix}{imagine_prompt.request_id}{settings.prompt_suffix} {user_prompt}. {params_str}"
+    return f"{settings.prompt_prefix}{imagine_prompt.request_id}{settings.prompt_suffix} {user_prompt} {params_str}"
 
 
 async def callback(data: CallbackData, r: redis.Redis) -> None:

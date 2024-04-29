@@ -52,6 +52,7 @@ def run_migrations_offline() -> None:
 
     """
     url = config.get_main_option("sqlalchemy.url")
+    print(f"开始离线模式: {url}")
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -61,6 +62,13 @@ def run_migrations_offline() -> None:
 
     with context.begin_transaction():
         context.run_migrations()
+
+
+def include_name(name, type_, parent_names):
+    if type_ == "table":
+        return name in target_metadata.tables
+    else:
+        return True
 
 
 def run_migrations_online() -> None:
@@ -79,7 +87,10 @@ def run_migrations_online() -> None:
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection,
+            arget_metadata=target_metadata,
+            include_schemas=True,
+            include_name=include_name
         )
 
         with context.begin_transaction():

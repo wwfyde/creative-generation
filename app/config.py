@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     default_instructions: str
     kimi_api_url: str
     kimi_api_key: str
+    unified_base_url: str
+    unified_api_key: str
     concurrency_limit: int = 3
     prefetch_count: int = 1
     midjourney_rate_limit: int | float = 1 / 4

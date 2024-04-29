@@ -66,6 +66,19 @@ class Instructions(Base):
     created_at: Mapped[datetime] = mapped_column(default=datetime.now, comment="创建时间")
     updated_at: Mapped[datetime] = mapped_column(default=datetime.now, onupdate=datetime.now, comment="更新时间")
 
+
+class LLM(Base):
+    __tablename__ = "llm"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(50), unique=True, index=True, nullable=False, comment="模型名称")
+    description: Mapped[str] = mapped_column(String(500), nullable=True, comment="详细说明")
+    provider: Mapped[str] = mapped_column(String(50), nullable=True, comment='供应商')
+    base_url: Mapped[str] = mapped_column(String(100), nullable=True, comment='基础URL')
+    api_key: Mapped[str] = mapped_column(String(100), nullable=False, comment='API Key')
+    models: Mapped[JSON] = mapped_column(JSON, nullable=True, comment="模型列表")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, nullable=True, comment='创建时间')
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now,
+                                                 onupdate=datetime.now, nullable=True, comment='更新时间')
 # TODO
 # 图像列表
 

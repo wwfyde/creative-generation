@@ -12,7 +12,7 @@ from PIL import Image
 from fastapi import HTTPException
 from loguru import logger
 from openai import OpenAI
-from pydantic import DirectoryPath
+from pydantic import DirectoryPath, validate_call
 from requests.adapters import HTTPAdapter
 from tenacity import retry, wait_fixed, stop_after_attempt
 from urllib3 import Retry
@@ -228,12 +228,19 @@ async def translate_by_azure(
     url = settings.azure_api_url
     headers = {
         "Content-Type": "application/json",
-        "api-key": settings.azure_api_key
+        # "api-key": settings.azure_api_key
+        'Authorization': f'Bearer {settings.azure_api_key}',
     }
 
     async with httpx.AsyncClient(timeout=settings.httpx_timeout) as client:
         start_time = asyncio.get_event_loop().time()
-        data = {"messages": [{"role": "system", "content": instructions, }, {"role": "user", "content": message}], }
+        data = {
+            'model': 'gpt-4',
+            "messages": [
+                {"role": "system", "content": instructions, },
+                {"role": "assistant",
+                 "content": '请提供您需要转换的base_prompt和关键词(keyword)，以便我根据您的要求生成manipulated_prompt。', },
+                {"role": "user", "content": message}], }
         response = await client.post(url, json=data, headers=headers)
         end_time = asyncio.get_event_loop().time()
         # 获取接口响应时间
@@ -310,24 +317,31 @@ class RateLimiter:
             await asyncio.sleep(self.refill_time)
 
 
+@validate_call
 def unified_api(
         message: str,
         instructions: str,
-        api_key: str,
-        base_url: str,
+        *,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        model: str = None,
+
 ):
     client = OpenAI(
-        api_key=api_key,
-        base_url=base_url
+        api_key=api_key or settings.unified_api_key,
+        base_url=base_url or settings.unified_base_url
     )
     completion = client.chat.completions.create(
-        model="moonshot-v1-8k",
+        model=model or 'gpt-4',
         messages=[
-            {"role": "system",
-             "content": instructions},
+            {"role": "system", "content": instructions},
+            {
+                "role": "assistant",
+                "content": "请提供您需要转换的base_prompt和关键词(keyword)，以便我根据您的要求生成manipulated_prompt。"
+            },
             {"role": "user", "content": message}
         ],
-        temperature=0.3,
+        temperature=1,
 
     )
     return completion.choices[0].message.content
@@ -378,5 +392,14 @@ if __name__ == '__main__':
     # url = upload_image('demo.text', 'hello, 世界!')
     # print(url)
     # asyncio.run(translate_by_azure("Photo of 樱花,日式,山海纹,富士山 sitting on fire", settings.azure_api_instructions))
-    asyncio.run(translate_by_kimi('你好，我叫李雷，1+1等于多少？', settings.default_instructions))
+    # asyncio.run(translate_by_kimi('你好，我叫李雷，1+1等于多少？', settings.default_instructions))
+    # print(settings.default_instructions)
+    result = unified_api(
+        message='Simple and elegant modern geometric pattern, in clean bold black line, vector graphic, shape, color backdrop.\n\n随机',
+        instructions=settings.default_instructions,
+        api_key=settings.unified_api_key,
+        base_url=settings.unified_base_url
+    )
+
+    print(result)
     ...
