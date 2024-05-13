@@ -4,7 +4,7 @@ from pathlib import Path
 
 from alembic import context
 from dotenv import load_dotenv
-from sqlalchemy import engine_from_config
+from sqlalchemy import engine_from_config, MetaData
 from sqlalchemy import pool
 
 from app import models  # noqa
@@ -22,7 +22,7 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-target_metadata = models.Base.metadata
+target_metadata: list[MetaData] | MetaData = [models.Base.metadata]
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
@@ -56,6 +56,7 @@ def run_migrations_offline() -> None:
     context.configure(
         url=url,
         target_metadata=target_metadata,
+        include_name=include_name,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
     )
@@ -66,6 +67,8 @@ def run_migrations_offline() -> None:
 
 def include_name(name, type_, parent_names):
     if type_ == "table":
+        if isinstance(target_metadata, list):
+            return any([name in item.tables for item in target_metadata])
         return name in target_metadata.tables
     else:
         return True

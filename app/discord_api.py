@@ -10,7 +10,7 @@ from loguru import logger
 
 from app import settings
 from app.schemas import CallbackData, ImaginePrompt
-from app.utils import translate_by_kimi, unified_api
+from app.utils import unified_api, translate_by_azure
 
 # 获取消息
 MESSAGE_URL = f"https://discord.com/api/v9/channels/{settings.channel_id}/messages"
@@ -48,11 +48,11 @@ async def handle_imagine_prompt(imagine_prompt: ImaginePrompt, **kwargs) -> str 
         logger.info(f"通过Azure OpenAI翻译prompt, 翻译结果: {user_prompt}")
         # user_prompt = imagine_prompt.prompt
         if user_prompt is None:
-            logger.error("Azure翻译异常, 使用月之暗面Moonshot(Kimi) API")
+            logger.error("Unified翻译异常, Azure OpenAI API")
             logger.debug(f"用户提示词: {imagine_prompt.prompt}, 指令: {instruction}")
             try:
-                user_prompt = await translate_by_kimi(f"{imagine_prompt.default_prompt}\n\n{imagine_prompt.prompt}",
-                                                      instruction)
+                user_prompt = await translate_by_azure(f"{imagine_prompt.default_prompt}\n\n{imagine_prompt.prompt}",
+                                                       instruction)
             except Exception:
                 user_prompt = ""
         logger.info(f"调用翻译API耗时: {(time.time() - start):.3f}秒")
@@ -169,7 +169,8 @@ async def imagine(prompt: str, nonce: str) -> bool:
     :return:
     """
     data = {
-        "version": "1166847114203123795",
+        # "version": "1166847114203123795",
+        "version": "1237876415471554623",
         "id": "938956540159881230",
         "name": "imagine",
         "type": 1,
@@ -180,57 +181,6 @@ async def imagine(prompt: str, nonce: str) -> bool:
                 "value": prompt
             }
         ],
-        "application_command": {
-            "id": "938956540159881230",
-            "type": 1,
-            "application_id": "936929561302675456",
-            "version": "1166847114203123795",
-            "name": "imagine",
-            "description": "Create images with Midjourney",
-            "options": [
-                {
-                    "type": 3,
-                    "name": "prompt",
-                    "description": "The prompt to imagine",
-                    "required": True,
-                    "description_localized": "The prompt to imagine",
-                    "name_localized": "prompt"
-                }
-            ],
-            "dm_permission": True,
-            "integration_types": [
-                0
-            ],
-            "global_popularity_rank": 1,
-            "description_localized": "Create images with Midjourney",
-            "name_localized": "imagine"
-        },
-        "attachments": [],
-        # "application_command": {
-        #     "id": "938956540159881230",
-        #     "type": 1,
-        #     "application_id": settings.application_id,
-        #     "version": "1166847114203123795",
-        #     "name": "imagine",
-        #     "description": "Create images with Midjourney",
-        #     "options": [
-        #         {
-        #             "type": 3,
-        #             "name": "prompt",
-        #             "description": "The prompt to imagine",
-        #             "required": True,
-        #             "description_localized": "The prompt to imagine",
-        #             "name_localized": "prompt"
-        #         }
-        #     ],
-        #     "integration_types": [
-        #         0
-        #     ],
-        #     "global_popularity_rank": 1,
-        #     "description_localized": "Create images with Midjourney",
-        #     "name_localized": "imagine"
-        # },
-        # "attachments": []
     }
     payload = handle_payload(2, nonce, data, {})
     logger.debug(payload)
@@ -240,13 +190,16 @@ async def imagine(prompt: str, nonce: str) -> bool:
             url=settings.interaction_url,
             headers={
                 'Authorization': settings.user_token,
-                'Content-Type': 'application/json'
+                # 'Content-Type': 'application/json',
+                # 'Content-Type': 'application/x-www-form-urlencoded',
+                # 'Content-Type': 'multipart/form-data',
             },
 
             json=payload
 
         )
-        logger.info(response.text)
+        logger.debug(response.request)
+        logger.info(response.text.encode().decode('unicode_escape'))
         if response.status_code in range(200, 300):
             logger.info("分发任务成功")
             logger.debug(f"{response.status_code=}{response.content=}")

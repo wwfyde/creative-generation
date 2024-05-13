@@ -1,5 +1,7 @@
 # API文档
 
+参考: https://github.com/novicezk/midjourney-proxy/blob/f2b401070ac5a251e26f6f2c6f6a65dfb4f53177/src/main/resources/api-params/imagine.json
+
 # generate
 
 ## API
