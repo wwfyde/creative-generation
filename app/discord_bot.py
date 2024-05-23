@@ -121,7 +121,8 @@ async def on_message(message: Message):
 
             r = await redis.from_url(settings.redis_dsn.unicode_string())
 
-            await r.set(f"{settings.redis_texture_generation_result}:{request_id}", body_str, ex=60 * 60 * 24 * 30)
+            await r.set(f"{settings.redis_texture_generation_result}:{request_id}", body_str,
+                        ex=settings.redis_expire_time)
             logger.info(f"将{request_id=}生成结果发送到redis: {body_str=}")
             await r.close()
 
