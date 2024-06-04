@@ -21,7 +21,7 @@ async def process_message_old(message: str):
     print(f" [x] Received {message}")
     try:
         message: dict = json.loads(message)
-    except json.JSONDecodeError as exc:
+    except json.JSONDecodeError:
         detail = f" [x] Received message is not json format: {message=}"
         logger.error(detail)
         print(detail)
@@ -47,8 +47,8 @@ async def process_message_old(message: str):
             # print(f"从redis获取结果状态: {result=}")
         # await asyncio.sleep(3)
     else:
-        logger.error(f"请求超时, 请检查请求是否成功")
-        print(f"请求超时, 请检查请求是否成功")
+        logger.error("请求超时, 请检查请求是否成功")
+        print("请求超时, 请检查请求是否成功")
     print(f" [x] Done, received: {message}")
     # await asyncio.sleep(3)
 
@@ -81,7 +81,7 @@ async def process_message(message: aio_pika.abc.AbstractIncomingMessage):
             #     "task_type": "TEXTURE"
             # }
             task_dict: dict = json.loads(message.body.decode())
-        except json.JSONDecodeError as exc:
+        except json.JSONDecodeError:
             detail = f" [x] Received message is not json format: {task_dict=}"
             logger.error(detail)
             print(detail)
@@ -171,7 +171,7 @@ async def process_message(message: aio_pika.abc.AbstractIncomingMessage):
 
 
 async def main() -> None:
-    conn = await aio_pika.connect_robust(settings.rabbitmq_url)
+    conn = await aio_pika.connect_robust(settings.rabbitmq_url, heartbeat=60)
     async with conn:
         channel = await conn.channel()
 
