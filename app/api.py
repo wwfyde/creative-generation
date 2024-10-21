@@ -1,18 +1,25 @@
 import asyncio
 import hashlib
-from datetime import time
-from typing import List, Dict
+import json
+import time
+from datetime import datetime, timedelta
+from typing import List, Dict, Sequence
 
-from fastapi import APIRouter, WebSocket
-from starlette.responses import HTMLResponse
+from fastapi import APIRouter, Depends, WebSocket
+from loguru import logger
+from pydantic import BaseModel, ConfigDict, Field
+from redis.asyncio import Redis
+from snowflake import Snowflake, SnowflakeGenerator
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 from starlette.websockets import WebSocketDisconnect
 
 from app.config import settings
-from app.dependency import DBSession
-from app.discord_api import handle_imagine_prompt
+from app.dependency import get_db, get_rate_limiter, get_redis_cache
+from app.discord_api import handle_imagine_prompt, imagine
 from app.models import PatternPreset
-from app.schemas import ImaginePrompt
-from app.worker import background_task
+from app.schemas import ImagineParameter, ImaginePrompt
+from app.utils import RateLimiter
 
 # from starlette.websockets import WebSocket
 
@@ -22,12 +29,12 @@ router = APIRouter()
 
 def unique_id():
     """生成唯一的 10 位数字，作为任务 ID"""
-    return int(hashlib.sha256(str(time()).encode("utf-8")).hexdigest(), 16) % 10 ** 10
+    return (
+        int(hashlib.sha256(str(time.time()).encode("utf-8")).hexdigest(), 16) % 10**10
+    )
 
 
-async def imagine(
-        prompt: ImaginePrompt
-):
+async def imagine_old1(prompt: ImaginePrompt):
     # 处理提示词
     handled_prompt = await handle_imagine_prompt(prompt.prompt)
     # 将任务添加到Celery队列
@@ -37,28 +44,29 @@ async def imagine(
     # await r.lpush('midjourney:tasks', prompt.model_dump_json())
     # TODO 异步处理任任务, 而不是直接将请求发送到midjourney bot
 
-    return {"message": "任务已添加到队列", "data": {
-        "prompt": handled_prompt,
-        # "style": prompt.style,
-        "task_id": ''
-    }}
+    return {
+        "message": "任务已添加到队列",
+        "data": {
+            "prompt": handled_prompt,
+            # "style": prompt.style,
+            "task_id": "",
+        },
+    }
 
 
-@router.post("/imagine")
-async def imagine_api(prompt: ImaginePrompt):
-    await imagine(prompt)
+# @router.post("/imagine")
+# async def imagine_api(prompt: ImaginePrompt):
+#     await imagine_old1(prompt)
 
 
-@router.post("/generate_message")
-async def generate_message(
-        prompt: str
-):
-    """
-    轮询接口, 用于获取生成的消息
-    :param prompt:
-    :return:
-    """
-    ...
+# @router.post("/generate_message")
+# async def generate_message(prompt: str):
+#     """
+#     轮询接口, 用于获取生成的消息
+#     :param prompt:
+#     :return:
+#     """
+#     ...
 
 
 html = """
@@ -96,20 +104,19 @@ html = """
 """
 
 
-@router.get('/db')
-async def db_get(
-        # db: Annotated[Session, Depends(get_db)]
-        db: DBSession
+# @router.get("/db")
+# async def db_get(
+#     # db: Annotated[Session, Depends(get_db)]
+#     db: DBSession,
+# ):
+#     texture = db.get(PatternPreset, 1)
+#
+#     return texture
 
-):
-    texture = db.get(PatternPreset, 1)
 
-    return texture
-
-
-@router.get("/html")
-async def get():
-    return HTMLResponse(html)
+# @router.get("/html")
+# async def get():
+#     return HTMLResponse(html)
 
 
 class ConnectionManager:
@@ -138,10 +145,7 @@ manager = ConnectionManager()
 
 
 @router.websocket("/ws/{trigger_id}")
-async def websocket_endpoint(
-        websocket: WebSocket,
-        trigger_id: str
-):
+async def websocket_endpoint(websocket: WebSocket, trigger_id: str):
     """
     Deprecated
     实时推送图像
@@ -165,9 +169,10 @@ async def websocket_endpoint(
 
 
 @router.websocket("/ws_imagine")
-async def warning_event_server(websocket: WebSocket,
-                               # db: Session = Depends(get_db)
-                               ):
+async def warning_event_server(
+    websocket: WebSocket,
+    # db: Session = Depends(get_db)
+):
     """
     实时推送生成状态
     :param websocket:
@@ -180,7 +185,7 @@ async def warning_event_server(websocket: WebSocket,
         # 查询条件 最近5
         # db.query(models.WarningEventMessage).filter()
         data: dict = await websocket.receive_json()
-        if data['']:
+        if data[""]:
             pass
         # log.info(f"接收信息成功:{data}")
         await websocket.send_json({"message": "接收信息成功", "data": data})
@@ -188,24 +193,194 @@ async def warning_event_server(websocket: WebSocket,
         await asyncio.sleep(settings.warning_interval)
 
 
-@router.post("/create_celery_task")
-async def trigger_task(name: str):
-    result = background_task.delay(name)
+# @router.post("/create_celery_task")
+# async def trigger_task(name: str):
+#     result = background_task.delay(name)
+#     return {"message": "Task triggerred!", "task_id": result.id}
+
+
+# @router.get("/get_celery_task")
+# async def get_celery_task(task_id: str):
+#     """
+#     通过任务ID轮询处理状态
+#     :param task_id:
+#     :return:
+#     """
+#     result = background_task.AsyncResult(task_id)
+#     if result.ready():
+#         return {"result": result.get()}
+#     else:
+#         return {"status": "pending"}
+
+
+class CreativeGenerateParams(BaseModel):
+    config: dict | None = Field(None, description="配置")
+    request_id: str | int | None = Field(
+        None, description="任务请求ID, 用于跟踪请求, 不传则自动创建"
+    )
+    prompt: str = Field(..., description="提示词")
+    parameter: ImagineParameter | None = Field(None, description="参数")
+    instructions: str | None = Field(
+        None, description="翻译指令, 控制如何翻译输入的prompt"
+    )
+    texture_id: str | None = Field(None, description="纹理ID")
+    wait_result: bool | None = Field(False, description="是否等待结果")
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "config": {"batch_size": 4},
+                "parameter": {"aspect": "4:3", "tile": False},
+                "prompt": "条形,平滑",
+                "texture_id": 3,
+            }
+        }
+    )
+
+
+@router.post("/creative_generate")
+async def generate_creative(
+    params: CreativeGenerateParams,
+    db: Session = Depends(get_db),
+    rate_limiter: RateLimiter = Depends(get_rate_limiter),
+    cache: Redis = Depends(get_redis_cache),
+):
+    """
+    生成创意
+    :return:
+    """
+    if not params.request_id:
+        params.request_id = unique_id()
+
+    if not params.texture_id and not all([params.prompt, params.parameter]):
+        return {"code": 400, "message": "参数不完整", "data": {}}
+    if params.texture_id:
+        stmt = select(PatternPreset).where(PatternPreset.id == params.texture_id)
+        texture: PatternPreset | None = db.execute(stmt).scalars().one_or_none()
+        default = dict(
+            default_prompt=", ".join(texture.prompt) if texture.prompt else "",
+            instructions=texture.instructions,
+            default_parameter=texture.parameters,
+        )
+    else:
+        instructions = (
+            params.instructions
+            if params.instructions
+            else settings.default_instructions
+        )
+        default = dict(instructions=instructions)
+
+    imagine_prompt = ImaginePrompt(**params.model_dump(exclude_unset=True), **default)
+    # imagine_prompt = ImaginePrompt(**task_dict["data"], **default)
+    prompt = await handle_imagine_prompt(imagine_prompt)
+
+    await rate_limiter.wait()
+
+    sf = Snowflake.parse(1225001209962692608, 1420070400000)
+    gen = SnowflakeGenerator.from_snowflake(sf)
+    nonce = str(next(gen))
+    logger.info(
+        f"Send imagine task to midjourney bot(discord channel). "
+        f"channel_id: {settings.channel_id}, request_id: {imagine_prompt.request_id}, nonce: {nonce}"
+    )
+
+    await imagine(prompt, nonce)
+    if params.wait_result:
+        # 等待结果
+        pass
+        start_time = datetime.now()
+        end_time = start_time + timedelta(seconds=settings.wait_max_seconds)
+        while datetime.now() < end_time:
+            result = await cache.get(
+                f"{settings.redis_texture_generation_result}:{params.request_id}"
+            )
+            if result:
+                try:
+                    result = json.loads(result)
+                    data = result["data"]["images"]
+                    return {
+                        "code": 200,
+                        "message": "获取结果成功",
+                        "data": {
+                            "wait_result": True,
+                            "images": data,
+                            "request_id": params.request_id,
+                        },
+                    }
+                except json.JSONDecodeError:
+                    return {
+                        "code": 400,
+                        "message": "解析结果失败",
+                        "data": None,
+                    }
+            time.sleep(10)
+            pass
+
+        return
     return {
-        "message": "Task triggerred!",
-        "task_id": result.id
+        "code": 200,
+        "message": "图像任务创建成功",
+        "data": {
+            "request_id": params.request_id,
+            "wait_result": False,
+        },
+    }
+    ...
+
+
+class TextureOut(BaseModel):
+    model_config = ConfigDict(
+        from_attributes=True,
+    )
+    name: str = Field(..., description="纹理名称")
+    prompt: list[str] | None = Field(None, description="提示词")
+    instructions: str | None = Field(None, description="说明")
+    parameters: list[str] | None = Field(None, description="参数")
+
+
+@router.get("/creative_generate/preset", summary="获取预设纹理")
+async def get_preset_texture(
+    db: Session = Depends(get_db),
+):
+    """
+    获取预设纹理
+    :return:
+    """
+    stmt = select(PatternPreset)
+    textures: Sequence[PatternPreset] = db.execute(stmt).scalars().all()
+    return {
+        "code": 200,
+        "message": "获取预设纹理成功",
+        "data": [TextureOut.model_validate(texture) for texture in textures],
     }
 
 
-@router.get("/get_celery_task")
-async def get_celery_task(task_id: str):
+@router.get("/creative_generate/result/{request_id}", summary="获取创意生成结果")
+async def get_generate(
+    request_id: str,
+    cache: Redis = Depends(get_redis_cache),
+):
     """
-    通过任务ID轮询处理状态
-    :param task_id:
-    :return:
+    接口用于前端轮询, 自定义最大时间后停止获取结果并报错
+
     """
-    result = background_task.AsyncResult(task_id)
-    if result.ready():
-        return {"result": result.get()}
-    else:
-        return {"status": "pending"}
+    result = await cache.get(f"{settings.redis_texture_generation_result}:{request_id}")
+    if not result:
+        return {"code": 404, "message": "未找到结果", "data": {}}
+    try:
+        result = json.loads(result)
+        data = result["data"]["images"]
+        return {
+            "code": 200,
+            "message": "获取结果成功",
+            "data": {
+                "images": data,
+                "request_id": request_id,
+            },
+        }
+    except json.JSONDecodeError:
+        return {
+            "code": 400,
+            "message": "解析结果失败",
+            "data": None,
+        }

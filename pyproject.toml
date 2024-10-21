@@ -7,7 +7,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = ">=3.11, <3.13"
-fastapi = { extras = ["all"], version = "^0.109.2" }
+fastapi = {extras = ["all"], version = "^0.115.2"}
 requests = "^2.31.0"
 discord-py = "^2.3.2"
 loguru = "^0.7.2"
@@ -25,11 +25,22 @@ oss2 = "^2.18.4"
 tenacity = "^8.2.3"
 openai = "^1.14.2"
 snowflake-id = "^1.0.1"
+slowapi = "^0.1.9"
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.21.0"
 pytest = "^8.0.1"
+ruff-lsp = "^0.0.57"
+ruff = "^0.6.9"
+black = "^24.10.0"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.format]
+quote-style = "double"
+docstring-code-format = true

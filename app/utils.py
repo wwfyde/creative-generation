@@ -18,11 +18,12 @@ from tenacity import retry, wait_fixed, stop_after_attempt
 from urllib3 import Retry
 
 from app import settings
+from app.decorators import time_decorator
 
 
-def gen_uuid(return_type: str = 'str') -> str | int:
+def gen_uuid(return_type: str = "str") -> str | int:
     match return_type:
-        case 'str':
+        case "str":
             uid = str(uuid.uuid4())
         case "int":
             uid = uuid.uuid4().int
@@ -51,23 +52,23 @@ def split_image(image_file):
 
 
 async def download_image(
-        url: str,
-        directory: DirectoryPath,
-        filename: str,
-        is_split: bool = False,
+    url: str,
+    directory: DirectoryPath,
+    filename: str,
+    is_split: bool = False,
 ):
-    response = httpx.get(url, timeout=settings.httpx_timeout, proxies={
-        "http://": settings.proxy_url,
-        "https://": settings.proxy_url
-    })
+    response = httpx.get(
+        url,
+        timeout=settings.httpx_timeout,
+        proxies={"http://": settings.proxy_url, "https://": settings.proxy_url},
+    )
     # response = requests.get(url, timeout=settings.httpx_timeout)
     response.raise_for_status()
     if response.status_code == 200:
-
-        output_folder = directory.joinpath('output')
+        output_folder = directory.joinpath("output")
         if not output_folder.exists():
             output_folder.mkdir(parents=True, exist_ok=True)
-        input_folder = directory.joinpath('input')
+        input_folder = directory.joinpath("input")
         if not input_folder.exists():
             input_folder.mkdir(parents=True, exist_ok=True)
         with open(directory.joinpath(input_folder, filename), "wb+") as f:
@@ -84,10 +85,26 @@ async def download_image(
             # Split the image
             top_left, top_right, bottom_left, bottom_right = split_image(input_file)
             # Save the output images with dynamic names in the output folder
-            top_left.save(directory.joinpath(output_folder, f"{file_prefix}_top_left{file_suffix}"))
-            top_right.save(directory.joinpath(output_folder, f"{file_prefix}_top_right{file_suffix}"))
-            bottom_left.save(directory.joinpath(output_folder, f"{file_prefix}_bottom_left{file_suffix}"))
-            bottom_right.save(directory.joinpath(output_folder, f"{file_prefix}_bottom_right{file_suffix}"))
+            top_left.save(
+                directory.joinpath(
+                    output_folder, f"{file_prefix}_top_left{file_suffix}"
+                )
+            )
+            top_right.save(
+                directory.joinpath(
+                    output_folder, f"{file_prefix}_top_right{file_suffix}"
+                )
+            )
+            bottom_left.save(
+                directory.joinpath(
+                    output_folder, f"{file_prefix}_bottom_left{file_suffix}"
+                )
+            )
+            bottom_right.save(
+                directory.joinpath(
+                    output_folder, f"{file_prefix}_bottom_right{file_suffix}"
+                )
+            )
 
             # TODO 将四张图片上传到OSS/S2等云存储服务, 并记录到数据库
         else:
@@ -99,19 +116,16 @@ async def download_image(
 
 
 async def download_image_to_oss(
-        url: str,
-        filename: str,
-        is_split: bool = False,
-        request_id: int = None
+    url: str, filename: str, is_split: bool = False, request_id: int = None
 ) -> List[str]:
-    response = httpx.get(url, timeout=settings.httpx_timeout, proxies={
-        "http://": settings.proxy_url,
-        "https://": settings.proxy_url
-    })
+    response = httpx.get(
+        url,
+        timeout=settings.httpx_timeout,
+        proxies={"http://": settings.proxy_url, "https://": settings.proxy_url},
+    )
     # response = requests.get(url, timeout=settings.httpx_timeout)
     response.raise_for_status()
     if response.status_code == 200:
-
         # 如果需要分割, 需要先分割后上传
         if is_split:
             # file_prefix = PurePath(filename).stem.split('_')[-1]
@@ -140,7 +154,7 @@ async def download_image_to_oss(
                         img_stream.getvalue(),
                         prefix=settings.oss_storage_path,
                         rename=False,
-                        domain=settings.oss_domain
+                        domain=settings.oss_domain,
                     )
                     image_urls.append(image_url)
 
@@ -155,7 +169,7 @@ async def download_image_to_oss(
             response.content,
             prefix=settings.oss_storage_path,
             rename=False,
-            domain=settings.oss_domain
+            domain=settings.oss_domain,
         )
 
         logger.info(f"上传图像生成成功, 图像链接: {image_url}")
@@ -219,8 +233,8 @@ def ask_azure_openai(image, prompt, api_key, timeout=10):
 
 @retry(wait=wait_fixed(3), stop=stop_after_attempt(3))
 async def translate_by_azure(
-        message: str,
-        instructions: str,
+    message: str,
+    instructions: str,
 ):
     """
     通过Azure API生成场景提示词
@@ -229,18 +243,25 @@ async def translate_by_azure(
     headers = {
         "Content-Type": "application/json",
         # "api-key": settings.azure_api_key
-        'Authorization': f'Bearer {settings.azure_api_key}',
+        "Authorization": f"Bearer {settings.azure_api_key}",
     }
 
     async with httpx.AsyncClient(timeout=settings.httpx_timeout) as client:
         start_time = asyncio.get_event_loop().time()
         data = {
-            'model': 'gpt-4',
+            "model": "gpt-4",
             "messages": [
-                {"role": "system", "content": instructions, },
-                {"role": "assistant",
-                 "content": '请提供您需要转换的base_prompt和关键词(keyword)，以便我根据您的要求生成manipulated_prompt。', },
-                {"role": "user", "content": message}], }
+                {
+                    "role": "system",
+                    "content": instructions,
+                },
+                {
+                    "role": "assistant",
+                    "content": "请提供您需要转换的base_prompt和关键词(keyword)，以便我根据您的要求生成manipulated_prompt。",
+                },
+                {"role": "user", "content": message},
+            ],
+        }
         response = await client.post(url, json=data, headers=headers)
         end_time = asyncio.get_event_loop().time()
         # 获取接口响应时间
@@ -249,36 +270,28 @@ async def translate_by_azure(
         if response.status_code == 200:
             data = response.json()
             logger.debug(data)
-            message: str = data['choices'][0]['message']['content']
+            message: str = data["choices"][0]["message"]["content"]
             print(f"Azure OpenAI处理后的消息: {message}")
             return message
 
 
 @retry(wait=wait_fixed(3), stop=stop_after_attempt(3))
-async def translate_by_kimi(
-        message: str,
-        instructions: str
-):
-    client = OpenAI(
-        api_key=settings.kimi_api_key,
-        base_url=settings.kimi_api_url
-    )
+async def translate_by_kimi(message: str, instructions: str):
+    client = OpenAI(api_key=settings.kimi_api_key, base_url=settings.kimi_api_url)
     completion = client.chat.completions.create(
         model="moonshot-v1-8k",
         messages=[
-            {"role": "system",
-             "content": instructions},
-            {"role": "user", "content": message}
+            {"role": "system", "content": instructions},
+            {"role": "user", "content": message},
         ],
         # 翻译效果不理想, 降低温度, 以保证一致性
         temperature=1,
-
     )
     return completion.choices[0].message.content
 
 
 class RateLimiter:
-    """"
+    """
     example:
         rate_limiter = RateLimiter(capacity=1, rate=0.2, refill_time=0.1)
         for _ in range(10):
@@ -307,6 +320,7 @@ class RateLimiter:
         self.tokens = min(self.capacity, self.tokens)
         # 重置检查时间
 
+    @time_decorator
     async def wait(self, tokens: int = 1):
         while True:
             self.add_tokens()
@@ -319,40 +333,39 @@ class RateLimiter:
 
 @validate_call
 def unified_api(
-        message: str,
-        instructions: str,
-        *,
-        api_key: str | None = None,
-        base_url: str | None = None,
-        model: str = None,
-
+    message: str,
+    instructions: str,
+    *,
+    api_key: str | None = None,
+    base_url: str | None = None,
+    model: str = None,
 ):
     client = OpenAI(
         api_key=api_key or settings.unified_api_key,
-        base_url=base_url or settings.unified_base_url
+        base_url=base_url or settings.unified_base_url,
     )
     completion = client.chat.completions.create(
-        model=model or 'gpt-4',
+        model=model or "gpt-4",
         messages=[
             {"role": "system", "content": instructions},
             {
                 "role": "assistant",
-                "content": "请提供您需要转换的base_prompt和关键词(keyword)，以便我根据您的要求生成manipulated_prompt。"
+                "content": "请提供您需要转换的base_prompt和关键词(keyword)，以便我根据您的要求生成manipulated_prompt。",
             },
-            {"role": "user", "content": message}
+            {"role": "user", "content": message},
         ],
         temperature=1,
-
     )
     return completion.choices[0].message.content
 
 
-def upload_image(filename: str,
-                 data: str | bytes,
-                 prefix: str = 'tmp',
-                 rename: bool = True,
-                 domain: str = None
-                 ) -> str:
+def upload_image(
+    filename: str,
+    data: str | bytes,
+    prefix: str = "tmp",
+    rename: bool = True,
+    domain: str = None,
+) -> str:
     """
     上传图片到OSS
     :param filename: 文件名
@@ -385,20 +398,22 @@ def upload_image(filename: str,
     if result.status == 200:
         return image_link
     else:
-        raise HTTPException(status_code=result.status, detail=result.resp.read().decode())
+        raise HTTPException(
+            status_code=result.status, detail=result.resp.read().decode()
+        )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # url = upload_image('demo.text', 'hello, 世界!')
     # print(url)
     # asyncio.run(translate_by_azure("Photo of 樱花,日式,山海纹,富士山 sitting on fire", settings.azure_api_instructions))
     # asyncio.run(translate_by_kimi('你好，我叫李雷，1+1等于多少？', settings.default_instructions))
     # print(settings.default_instructions)
     result = unified_api(
-        message='Simple and elegant modern geometric pattern, in clean bold black line, vector graphic, shape, color backdrop.\n\n随机',
+        message="Simple and elegant modern geometric pattern, in clean bold black line, vector graphic, shape, color backdrop.\n\n随机",
         instructions=settings.default_instructions,
         api_key=settings.unified_api_key,
-        base_url=settings.unified_base_url
+        base_url=settings.unified_base_url,
     )
 
     print(result)

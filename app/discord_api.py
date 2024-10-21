@@ -1,6 +1,7 @@
 """
 Discord Midjourney Bot API, 通过API模拟与Midjourney进行交互
 """
+
 import string
 import time
 
@@ -17,10 +18,7 @@ MESSAGE_URL = f"https://discord.com/api/v9/channels/{settings.channel_id}/messag
 
 # 回调函数 通知生成任务完成
 CALLBACK_URL = f"http://localhost:8000{settings.api_prefix}/imagine/callback"
-proxies = {
-    "http://": settings.proxy_url,
-    "https://": settings.proxy_url
-}
+proxies = {"http://": settings.proxy_url, "https://": settings.proxy_url}
 
 
 async def handle_imagine_prompt(imagine_prompt: ImaginePrompt, **kwargs) -> str | None:
@@ -35,13 +33,20 @@ async def handle_imagine_prompt(imagine_prompt: ImaginePrompt, **kwargs) -> str 
     logger.debug(f"基础提示词: {imagine_prompt.default_prompt=}")
     if imagine_prompt.prompt:
         start = time.time()
-        instruction = imagine_prompt.instructions if imagine_prompt.instructions else settings.default_instructions
+        instruction = (
+            imagine_prompt.instructions
+            if imagine_prompt.instructions
+            else settings.default_instructions
+        )
         logger.info(f"大模型指令(llm instruction): {instruction}")
-        instruction = string.Template(instruction).safe_substitute(prompt=imagine_prompt.default_prompt)
+        instruction = string.Template(instruction).safe_substitute(
+            prompt=imagine_prompt.default_prompt
+        )
         try:
             user_prompt = unified_api(
                 message=f"{imagine_prompt.default_prompt}\n\n{imagine_prompt.prompt}",
-                instructions=instruction)
+                instructions=instruction,
+            )
         except Exception as exc:
             logger.warning(f"调用unified-api失败, 错误提示: {exc}")
             user_prompt = ""
@@ -51,8 +56,10 @@ async def handle_imagine_prompt(imagine_prompt: ImaginePrompt, **kwargs) -> str 
             logger.error("Unified翻译异常, Azure OpenAI API")
             logger.debug(f"用户提示词: {imagine_prompt.prompt}, 指令: {instruction}")
             try:
-                user_prompt = await translate_by_azure(f"{imagine_prompt.default_prompt}\n\n{imagine_prompt.prompt}",
-                                                       instruction)
+                user_prompt = await translate_by_azure(
+                    f"{imagine_prompt.default_prompt}\n\n{imagine_prompt.prompt}",
+                    instruction,
+                )
             except Exception:
                 user_prompt = ""
         logger.info(f"调用翻译API耗时: {(time.time() - start):.3f}秒")
@@ -61,7 +68,9 @@ async def handle_imagine_prompt(imagine_prompt: ImaginePrompt, **kwargs) -> str 
         user_prompt = ""
     logger.debug(f"{user_prompt=}")
 
-    params = imagine_prompt.default_parameter if imagine_prompt.default_parameter else []
+    params = (
+        imagine_prompt.default_parameter if imagine_prompt.default_parameter else []
+    )
     # 组装参数
     for key, value in imagine_prompt.parameter.model_dump(exclude_unset=True).items():
         if isinstance(value, bool) and value:
@@ -76,7 +85,7 @@ async def handle_imagine_prompt(imagine_prompt: ImaginePrompt, **kwargs) -> str 
             # 应该将参数添加到列表开头, 开头具有更高的优先级
             params.insert(0, f"--{key} {value}")
     # params.append('--relax')
-    params_str = ' '.join(params)
+    params_str = " ".join(params)
     logger.debug(f"{params_str=}")
 
     # # 从数据库中获取风格
@@ -97,10 +106,11 @@ async def callback(data: CallbackData, r: redis.Redis) -> None:
     :return:
     """
     # 将生成的图片存入redis
-    resp = await r.set(f"{settings.redis_texture_generation_result}:{data.request_id}",
-                       data.model_dump_json(),
-                       ex=settings.redis_expire_time
-                       )
+    resp = await r.set(
+        f"{settings.redis_texture_generation_result}:{data.request_id}",
+        data.model_dump_json(),
+        ex=settings.redis_expire_time,
+    )
     logger.info(f"request_id: {data.request_id}, 生成成功: 图片链接: {data.url}")
 
     # logger.debug(f"callback data: {data}")
@@ -116,7 +126,9 @@ async def callback(data: CallbackData, r: redis.Redis) -> None:
     #     await client.post(CALLBACK_URL, json=data.model_dump())
 
 
-def handle_payload(type_: int, nonce: str, data: dict, extra_params: dict = None) -> dict:
+def handle_payload(
+    type_: int, nonce: str, data: dict, extra_params: dict = None
+) -> dict:
     """
     payload 处理
     :param type_:
@@ -142,31 +154,31 @@ def handle_payload(type_: int, nonce: str, data: dict, extra_params: dict = None
 
 async def imagine(prompt: str, nonce: str) -> bool:
     """
-    /imagine prompt
-    {"type":2,"application_id":"936929561302675456","guild_id":"1076097007850111017","channel_id":"1076097007850111020","session_id":"aa6cd72b34ccb37e8b615dc4f9688da7","data":{"version":"1166847114203123795","id":"938956540159881230","name":"imagine","type":1,"options":[{"type":3,"name":"prompt","value":"the legend of Big Foot yeti by Joan Cornella, \"BELIEVE\" written on top  --style  raw  --ar  5:7  --stylize  25"}],"application_command":{"id":"938956540159881230","type":1,"application_id":"936929561302675456","version":"1166847114203123795","name":"imagine","description":"Create images with Midjourney","options":[{"type":3,"name":"prompt","description":"The prompt to imagine","required":true,"description_localized":"The prompt to imagine","name_localized":"prompt"}],"dm_permission":true,"integration_types":[0],"global_popularity_rank":1,"description_localized":"Create images with Midjourney","name_localized":"imagine"},"attachments":[]},"nonce":"1224974236855042048","analytics_location":"slash_ui"}
+        /imagine prompt
+        {"type":2,"application_id":"936929561302675456","guild_id":"1076097007850111017","channel_id":"1076097007850111020","session_id":"aa6cd72b34ccb37e8b615dc4f9688da7","data":{"version":"1166847114203123795","id":"938956540159881230","name":"imagine","type":1,"options":[{"type":3,"name":"prompt","value":"the legend of Big Foot yeti by Joan Cornella, \"BELIEVE\" written on top  --style  raw  --ar  5:7  --stylize  25"}],"application_command":{"id":"938956540159881230","type":1,"application_id":"936929561302675456","version":"1166847114203123795","name":"imagine","description":"Create images with Midjourney","options":[{"type":3,"name":"prompt","description":"The prompt to imagine","required":true,"description_localized":"The prompt to imagine","name_localized":"prompt"}],"dm_permission":true,"integration_types":[0],"global_popularity_rank":1,"description_localized":"Create images with Midjourney","name_localized":"imagine"},"attachments":[]},"nonce":"1224974236855042048","analytics_location":"slash_ui"}
 
-    {
-  "type": 2,
-  "guild_id": "$guild_id",
-  "channel_id": "$channel_id",
-  "application_id": "936929561302675456",
-  "session_id": "$session_id",
-  "nonce": "$nonce",
-  "data": {
-    "version": "1166847114203123795",
-    "id": "938956540159881230",
-    "name": "imagine",
-    "type": 1,
-    "options": [
-      {
-        "type": 3,
-        "name": "prompt",
-        "value": "$prompt"
+        {
+      "type": 2,
+      "guild_id": "$guild_id",
+      "channel_id": "$channel_id",
+      "application_id": "936929561302675456",
+      "session_id": "$session_id",
+      "nonce": "$nonce",
+      "data": {
+        "version": "1166847114203123795",
+        "id": "938956540159881230",
+        "name": "imagine",
+        "type": 1,
+        "options": [
+          {
+            "type": 3,
+            "name": "prompt",
+            "value": "$prompt"
+          }
+        ]
       }
-    ]
-  }
-}
-    :return:
+    }
+        :return:
     """
     data = {
         # "version": "1166847114203123795",
@@ -174,32 +186,26 @@ async def imagine(prompt: str, nonce: str) -> bool:
         "id": "938956540159881230",
         "name": "imagine",
         "type": 1,
-        "options": [
-            {
-                "type": 3,
-                "name": "prompt",
-                "value": prompt
-            }
-        ],
+        "options": [{"type": 3, "name": "prompt", "value": prompt}],
     }
     payload = handle_payload(2, nonce, data, {})
     logger.debug(payload)
     print(payload)
-    async with httpx.AsyncClient(timeout=settings.httpx_timeout, proxies=proxies) as client:
+    async with httpx.AsyncClient(
+        timeout=settings.httpx_timeout, proxies=proxies
+    ) as client:
         response = await client.post(
             url=settings.interaction_url,
             headers={
-                'Authorization': settings.user_token,
+                "Authorization": settings.user_token,
                 # 'Content-Type': 'application/json',
                 # 'Content-Type': 'application/x-www-form-urlencoded',
                 # 'Content-Type': 'multipart/form-data',
             },
-
-            json=payload
-
+            json=payload,
         )
         logger.debug(response.request)
-        logger.info(response.text.encode().decode('unicode_escape'))
+        logger.info(response.text.encode().decode("unicode_escape"))
         if response.status_code in range(200, 300):
             logger.info("分发任务成功")
             logger.debug(f"{response.status_code=}{response.content=}")
@@ -218,12 +224,7 @@ async def ack_message(filename: str) -> str | None:
     """
 
 
-async def upscale(
-        index: int,
-        message_id: str,
-        message_hash: str,
-        extra_params: dict
-):
+async def upscale(index: int, message_id: str, message_hash: str, extra_params: dict):
     """
     放大增强图片, U1, U2, U3, U4
     其实是图像分割
@@ -249,21 +250,28 @@ async def upscale(
         "session_id": "faa9c3fcd1bb335c22a3eb49d78bddf4",
         "data": {
             "component_type": 2,
-            "custom_id": "MJ::JOB::upsample::2::e68e4d8b-77ea-4c8f-9589-72f3a8c0bfd0"
-        }
+            "custom_id": "MJ::JOB::upsample::2::e68e4d8b-77ea-4c8f-9589-72f3a8c0bfd0",
+        },
     }
     payload_3 = {
-        "type": 3, "nonce": "1216568420791746560",
+        "type": 3,
+        "nonce": "1216568420791746560",
         "guild_id": "1076097007850111017",
-        "channel_id": "1076097007850111020", "message_flags": 0, "message_id": "1216371139681456158",
-        "application_id": "936929561302675456", "session_id": "faa9c3fcd1bb335c22a3eb49d78bddf4",
-        "data": {"component_type": 2,
-                 "custom_id": "MJ::JOB::upsample::3::e68e4d8b-77ea-4c8f-9589-72f3a8c0bfd0"}}
+        "channel_id": "1076097007850111020",
+        "message_flags": 0,
+        "message_id": "1216371139681456158",
+        "application_id": "936929561302675456",
+        "session_id": "faa9c3fcd1bb335c22a3eb49d78bddf4",
+        "data": {
+            "component_type": 2,
+            "custom_id": "MJ::JOB::upsample::3::e68e4d8b-77ea-4c8f-9589-72f3a8c0bfd0",
+        },
+    }
     return True
 
 
 async def subtle_upscale(
-        image_index: int,
+    image_index: int,
 ):
     """
     精细放大
@@ -274,15 +282,24 @@ async def subtle_upscale(
     url = "https://discord.com/api/v9/interactions"
     message = "<#32345#> a asia girl with long and black and straight hair --style raw --v 6.0 - Upscaled (Subtle) by @xhcyw2 (fast)"
     token = " Upscaled (Subtle) "
-    payload = {"type": 3, "nonce": "1216564633255542784", "guild_id": "1076097007850111017",
-               "channel_id": "1076097007850111020", "message_flags": 0, "message_id": "1216372243345571871",
-               "application_id": "936929561302675456", "session_id": "faa9c3fcd1bb335c22a3eb49d78bddf4",
-               "data": {"component_type": 2,
-                        "custom_id": "MJ::JOB::upsample_v6_2x_subtle::1::fc9b0549-969a-437f-8949-c6defa2be2a1::SOLO"}}
+    payload = {
+        "type": 3,
+        "nonce": "1216564633255542784",
+        "guild_id": "1076097007850111017",
+        "channel_id": "1076097007850111020",
+        "message_flags": 0,
+        "message_id": "1216372243345571871",
+        "application_id": "936929561302675456",
+        "session_id": "faa9c3fcd1bb335c22a3eb49d78bddf4",
+        "data": {
+            "component_type": 2,
+            "custom_id": "MJ::JOB::upsample_v6_2x_subtle::1::fc9b0549-969a-437f-8949-c6defa2be2a1::SOLO",
+        },
+    }
 
 
 async def creative_upscale(
-        image_index: int,
+    image_index: int,
 ):
     """
     创意放大
@@ -292,22 +309,26 @@ async def creative_upscale(
     ...
     # message = "<#32345#> a asia girl with long and black and straight hair --style raw --v 6.0 - Upscaled (Creative) by @xhcyw2 (fast)"
     token = " Upscaled (Creative) "
-    payload = {"type": 3,
-               "nonce": "1216562088659386368", "guild_id": "1076097007850111017",
-               "channel_id": "1076097007850111020", "message_flags": 0, "message_id": "1216372243345571871",
-               "application_id": "936929561302675456", "session_id": "faa9c3fcd1bb335c22a3eb49d78bddf4",
-               "data": {"component_type": 2,
-                        "custom_id": "MJ::JOB::upsample_v6_2x_creative::1::fc9b0549-969a-437f-8949-c6defa2be2a1::SOLO"}}
+    payload = {
+        "type": 3,
+        "nonce": "1216562088659386368",
+        "guild_id": "1076097007850111017",
+        "channel_id": "1076097007850111020",
+        "message_flags": 0,
+        "message_id": "1216372243345571871",
+        "application_id": "936929561302675456",
+        "session_id": "faa9c3fcd1bb335c22a3eb49d78bddf4",
+        "data": {
+            "component_type": 2,
+            "custom_id": "MJ::JOB::upsample_v6_2x_creative::1::fc9b0549-969a-437f-8949-c6defa2be2a1::SOLO",
+        },
+    }
     special_token = "custom_id"
 
 
 async def variation(
-        index: int,
-        message_id: str,
-        message_hash: str,
-        extra_params: dict
-):
-    ...
+    index: int, message_id: str, message_hash: str, extra_params: dict
+): ...
 
 
 async def describe():
@@ -317,35 +338,60 @@ async def describe():
     {"type":2,"application_id":"936929561302675456","guild_id":"1076097007850111017","channel_id":"1076097007850111020","session_id":"002bfe88bc266348b0eb0a7affcf68fe","data":{"version":"1204231436023111690","id":"1092492867185950852","name":"describe","type":1,"options":[{"type":11,"name":"image","value":0}],"application_command":{"id":"1092492867185950852","type":1,"application_id":"936929561302675456","version":"1204231436023111690","name":"describe","description":"Writes a prompt based on your image.","options":[{"type":11,"name":"image","description":"The image to describe","required":false,"description_localized":"The image to describe","name_localized":"image"},{"type":3,"name":"link","description":"…","required":false,"description_localized":"…","name_localized":"link"}],"integration_types":[0],"global_popularity_rank":3,"description_localized":"Writes a prompt based on your image.","name_localized":"describe"},"attachments":[{"id":"0","filename":"7811e9f022e9484b9b80991abbfdcfad.jpeg","uploaded_filename":"ad057382-3771-4d62-b847-1adbec12a899/7811e9f022e9484b9b80991abbfdcfad.jpeg"}]},"nonce":"1217645936977641472","analytics_location":"slash_ui"}
     :return:
     """
-    payload = {"type": 2,
-               "application_id": settings.application_id,
-               "guild_id": settings.guild_id,
-               "channel_id": settings.channel_id,
-               "session_id": "002bfe88bc266348b0eb0a7affcf68fe",
-               "data": {
-                   "version": "1204231436023111690",
-                   "id": "1092492867185950852", "name": "describe", "type": 1,
-                   "options": [{"type": 11, "name": "image", "value": 0}],
-                   "application_command": {
-                       "id": "1092492867185950852", "type": 1,
-                       "application_id": "936929561302675456",
-                       "version": "1204231436023111690",
-                       "name": "describe",
-                       "description": "Writes a prompt based on your image.", "options": [
-                           {"type": 11, "name": "image", "description": "The image to describe", "required": False,
-                            "description_localized": "The image to describe", "name_localized": "image"},
-                           {"type": 3, "name": "link", "description": "…", "required": False,
-                            "description_localized": "…", "name_localized": "link"}], "integration_types": [0],
-                       "global_popularity_rank": 3,
-                       "description_localized": "Writes a prompt based on your image.",
-                       "name_localized": "describe"
-                   },
-                   "attachments": [
-                       {"id": "0", "filename": "7811e9f022e9484b9b80991abbfdcfad.jpeg",
-                        "uploaded_filename": "ad057382-3771-4d62-b847-1adbec12a899/7811e9f022e9484b9b80991abbfdcfad.jpeg"}
-                   ]
-               },
-               "nonce": "1217645936977641472", "analytics_location": "slash_ui"}
+    
+    payload = {
+        "type": 2,
+        "application_id": settings.application_id,
+        "guild_id": settings.guild_id,
+        "channel_id": settings.channel_id,
+        "session_id": "002bfe88bc266348b0eb0a7affcf68fe",
+        "data": {
+            "version": "1204231436023111690",
+            "id": "1092492867185950852",
+            "name": "describe",
+            "type": 1,
+            "options": [{"type": 11, "name": "image", "value": 0}],
+            "application_command": {
+                "id": "1092492867185950852",
+                "type": 1,
+                "application_id": "936929561302675456",
+                "version": "1204231436023111690",
+                "name": "describe",
+                "description": "Writes a prompt based on your image.",
+                "options": [
+                    {
+                        "type": 11,
+                        "name": "image",
+                        "description": "The image to describe",
+                        "required": False,
+                        "description_localized": "The image to describe",
+                        "name_localized": "image",
+                    },
+                    {
+                        "type": 3,
+                        "name": "link",
+                        "description": "…",
+                        "required": False,
+                        "description_localized": "…",
+                        "name_localized": "link",
+                    },
+                ],
+                "integration_types": [0],
+                "global_popularity_rank": 3,
+                "description_localized": "Writes a prompt based on your image.",
+                "name_localized": "describe",
+            },
+            "attachments": [
+                {
+                    "id": "0",
+                    "filename": "7811e9f022e9484b9b80991abbfdcfad.jpeg",
+                    "uploaded_filename": "ad057382-3771-4d62-b847-1adbec12a899/7811e9f022e9484b9b80991abbfdcfad.jpeg",
+                }
+            ],
+        },
+        "nonce": "1217645936977641472",
+        "analytics_location": "slash_ui",
+    }
 
     ...
 
@@ -368,6 +414,4 @@ async def fast():
 
 
 async def relax():
-    """
-
-    """
+    """ """

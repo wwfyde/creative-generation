@@ -8,7 +8,7 @@ class ImagineBase(BaseModel):
 
 
 class ImagineParameter(BaseModel):
-    aspect: str | None = '1:1'
+    aspect: str | None = "1:1"
     texture_id: int | None = None
     chaos: int | None = None
     sref: str | None = None  # style_reference
@@ -34,7 +34,7 @@ class ImagineSubstitution(BaseModel):
 
 
 class ImaginePrompt(ImagineBase):
-    request_id: int
+    request_id: int | str | None = None
     prompt: str
     default_prompt: str | None = None
     default_parameter: list[str] | None = None

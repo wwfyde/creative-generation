@@ -14,7 +14,9 @@ from app.models import PatternPreset
 from app.schemas import ImaginePrompt
 from app.utils import RateLimiter
 
-rate_limiter = RateLimiter(capacity=1, rate=settings.midjourney_rate_limit, refill_time=0.3)
+rate_limiter = RateLimiter(
+    capacity=1, rate=settings.midjourney_rate_limit, refill_time=0.3
+)
 
 
 async def process_message_old(message: str):
@@ -29,7 +31,7 @@ async def process_message_old(message: str):
     message = dict(request_id=1234, data=dict(prompt="hello"))
     # TODO 通过discord_api 发起请求
     # prompt = handle_prompt(message['data']['prompt'])
-    prompt = message['data']['prompt']
+    prompt = message["data"]["prompt"]
     # TODO 使用sleep 代替耗时任务
     # await generate(prompt)
     await asyncio.sleep(10)
@@ -37,7 +39,9 @@ async def process_message_old(message: str):
     r = await redis.from_url(settings.redis_dsn.unicode_string())
 
     for _ in range(60):
-        result = await r.get(f'{settings.redis_texture_generation_result}:{message["request_id"]}')
+        result = await r.get(
+            f'{settings.redis_texture_generation_result}:{message["request_id"]}'
+        )
         if result:
             print(result)
             # TODO 将生成结果发送到rabbitmq 队列中
@@ -56,7 +60,6 @@ async def process_message_old(message: str):
 async def process_message(message: aio_pika.abc.AbstractIncomingMessage):
     logger.info(f"从消息队列Received获取到消息: {message.body.decode()}")
     async with message.process():
-
         try:
             # 从消息队列获取任务,并转换为Python dict对象
             # {
@@ -89,11 +92,11 @@ async def process_message(message: aio_pika.abc.AbstractIncomingMessage):
 
         with Session(engine) as session:
             # 根据风格获取纹理配置
-            texture = session.get(PatternPreset, task_dict['data']['texture_id'])
+            texture = session.get(PatternPreset, task_dict["data"]["texture_id"])
             default = dict(
-                default_prompt=', '.join(texture.prompt),
+                default_prompt=", ".join(texture.prompt),
                 instructions=texture.instructions,
-                default_parameter=texture.parameters
+                default_parameter=texture.parameters,
             )
             # 参数翻译
             # TODO 增加避免中文
@@ -114,7 +117,7 @@ async def process_message(message: aio_pika.abc.AbstractIncomingMessage):
         # 将 参数置换后的提示词作为Discord Midjourney /imagine Prompt 的一部分
         # task_dict['data']['prompt'] = prompt
         # 参数校验
-        imagine_prompt = ImaginePrompt(**task_dict['data'], **default)
+        imagine_prompt = ImaginePrompt(**task_dict["data"], **default)
 
         # task = ImaginePrompt(request_id=task_dict['request_id'], **task_dict['data'])
         # 处理提示词
@@ -137,7 +140,8 @@ async def process_message(message: aio_pika.abc.AbstractIncomingMessage):
             nonce = str(next(gen))
             logger.info(
                 f"Send imagine task to midjourney bot(discord channel). "
-                f"channel_id: {settings.channel_id}, request_id: {imagine_prompt.request_id}, nonce: {nonce}")
+                f"channel_id: {settings.channel_id}, request_id: {imagine_prompt.request_id}, nonce: {nonce}"
+            )
 
             await imagine(prompt, nonce)
 
@@ -175,11 +179,15 @@ async def main() -> None:
     async with conn:
         channel = await conn.channel()
 
-        await channel.declare_exchange(settings.rabbitmq_exchange, type=aio_pika.ExchangeType.TOPIC, durable=True)
+        await channel.declare_exchange(
+            settings.rabbitmq_exchange, type=aio_pika.ExchangeType.TOPIC, durable=True
+        )
         await channel.set_qos(prefetch_count=settings.prefetch_count)
-        queue = await channel.declare_queue(settings.texture_generation_queue, durable=True)
+        queue = await channel.declare_queue(
+            settings.texture_generation_queue, durable=True
+        )
         await queue.bind(settings.rabbitmq_exchange, settings.texture_generation_queue)
-        logger.info(f'开始消费队列: {settings.texture_generation_queue}')
+        logger.info(f"开始消费队列: {settings.texture_generation_queue}")
         await queue.consume(process_message)
         try:
             await asyncio.Future()
@@ -187,5 +195,5 @@ async def main() -> None:
             await conn.close()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     asyncio.run(main())

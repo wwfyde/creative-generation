@@ -3,12 +3,19 @@ from typing import List
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel
-from starlette.responses import RedirectResponse, JSONResponse
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
+from starlette.responses import JSONResponse, RedirectResponse
 
 from app import api
 from app.config import settings
 
+limiter = Limiter(key_func=get_remote_address)
+
 app = FastAPI()
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
 # register exception_handler
@@ -16,10 +23,7 @@ app = FastAPI()
 async def validation_exception_handler(_, exc: RequestValidationError):
     return JSONResponse(
         status_code=400,
-        content={
-            "code": 400,
-            "message": f"request params error: {exc.body}"
-        },
+        content={"code": 400, "message": f"request params error: {exc.body}"},
     )
 
 
@@ -28,29 +32,10 @@ class Item(BaseModel):
     list: List[str]
 
 
-@app.get('/')
+@app.get("/")
 async def root():
-    return RedirectResponse('/docs')
+    return RedirectResponse("/docs")
 
-
-@app.get("/demo")
-async def demo():
-    """直接返回pydantic对象"""
-    return Item(key='value', list=['a', 'b', 'c'])
-
-
-@app.get("/hello/{name}")
-async def say_hello(name: str):
-    return {"message": f"Hello {name}"}
-
-
-@app.get("/info")
-async def info():
-    """
-    获取配置信息
-    :return:
-    """
-    return settings.model_dump()
 
 
 app.include_router(api.router, prefix=settings.api_prefix)

@@ -7,7 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     server_port: int = 8013
     project_dir: DirectoryPath = Path(__file__).parent.parent
-    api_prefix: str = '/api'
+    api_prefix: str = "/api"
     user_token: str
     bot_token: str
     guild_id: str
@@ -16,13 +16,13 @@ class Settings(BaseSettings):
     bot_application_id: str
     user_id: str
     session_id: str
-    interaction_url: str = 'https://discord.com/api/v9/interactions'
+    interaction_url: str = "https://discord.com/api/v9/interactions"
     redis_host: str
     redis_port: int
     redis_db: int
     proxy_url: str
     httpx_timeout: int = 60 * 5
-    log_level: str = 'DEBUG'
+    log_level: str = "DEBUG"
     azure_api_url: str
     azure_api_key: str
     default_instructions: str
@@ -35,12 +35,15 @@ class Settings(BaseSettings):
     midjourney_rate_limit: int | float = 1 / 4
     prompt_prefix: str
     prompt_suffix: str
-    redis_texture_generation_result: str = 'molook:texture'
+    redis_texture_generation_result: str = "molook:texture"
     redis_expire_time: int = 60 * 60 * 24 * 15  # 15天
-    redis_dsn: RedisDsn = 'redis://@localhost:6379/0'
+    redis_dsn: RedisDsn | str = "redis://@localhost:6379/0"
+    wait_max_seconds: int = 60 * 5  # 5分钟
 
-    mysql_dsn: str | MySQLDsn = 'mysql+mysqlconnector://<user>:<password>@<host>[:<port>]/<dbname>'
-    pg_dsn: str | PostgresDsn = 'postgresql+psycopg://user:pass@host:5432/db'
+    mysql_dsn: str | MySQLDsn = (
+        "mysql+mysqlconnector://<user>:<password>@<host>[:<port>]/<dbname>"
+    )
+    pg_dsn: str | PostgresDsn = "postgresql+psycopg://user:pass@host:5432/db"
 
     # RABBITMQ
     rabbitmq_url: str
@@ -60,7 +63,7 @@ class Settings(BaseSettings):
     test: bool = False
 
     model_config = SettingsConfigDict(
-        env_file=('.env', '.env.local', '.env.staging', '.env.prod')
+        env_file=(".env", ".env.local", ".env.staging", ".env.prod")
     )
 
 

@@ -28,7 +28,7 @@ target_metadata: list[MetaData] | MetaData = [models.Base.metadata]
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
-env_files = ['.env', '.env.local']
+env_files = [".env", ".env.local"]
 for env_file in env_files:
     env_file = Path(__file__).resolve().parent.parent.joinpath(env_file)
     print(env_file)
@@ -93,7 +93,7 @@ def run_migrations_online() -> None:
             connection=connection,
             arget_metadata=target_metadata,
             include_schemas=True,
-            include_name=include_name
+            include_name=include_name,
         )
 
         with context.begin_transaction():

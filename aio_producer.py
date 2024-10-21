@@ -7,9 +7,7 @@ from app import settings
 
 
 async def main() -> None:
-    connection = await aio_pika.connect_robust(
-        settings.rabbitmq_url
-    )
+    connection = await aio_pika.connect_robust(settings.rabbitmq_url)
     print(connection.connected)
     async with connection:
         routing_key = settings.texture_generation_queue
@@ -24,13 +22,10 @@ async def main() -> None:
                 "request_id": 4356744388511,
                 "texture_id": 4,
                 "prompt": "随机, 蓝色背景",
-                "config": {
-                    "batch_size": 4
-                },
+                "config": {"batch_size": 4},
                 "substitution": {
                     # "subject": "a girl"
                     # "subject": "樱花, 日式, 山海纹, 富士山"
-
                 },
                 "parameter": {
                     "aspect": "1:1",
@@ -38,12 +33,15 @@ async def main() -> None:
                     # "sref": "https://s.mj.run/uNNgfOox2LY",
                     # "sw": 1000
                 },
-                "tags": [""]
-            }
+                "tags": [""],
+            },
         }
-        exchange = await channel.declare_exchange(settings.rabbitmq_exchange, type=aio_pika.ExchangeType.TOPIC,
-                                                  durable=True)
-        queue = await channel.declare_queue(settings.texture_generation_queue, durable=True)
+        exchange = await channel.declare_exchange(
+            settings.rabbitmq_exchange, type=aio_pika.ExchangeType.TOPIC, durable=True
+        )
+        queue = await channel.declare_queue(
+            settings.texture_generation_queue, durable=True
+        )
         await queue.bind(exchange, routing_key)
         await exchange.publish(
             aio_pika.Message(body=json.dumps(message).encode()),
@@ -52,5 +50,5 @@ async def main() -> None:
         print()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     asyncio.run(main())

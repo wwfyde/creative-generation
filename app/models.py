@@ -5,20 +5,23 @@ from sqlalchemy import Column, Integer, Boolean, DateTime, String, JSON, Foreign
 from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase, relationship  # noqa
 
 
-class Base(DeclarativeBase):
-    ...
+class Base(DeclarativeBase): ...
 
 
 # TODO Database Mapped class Design
 class Generation(Base):
     __tablename__ = "generation"
-    __table_args__ = {
-        'comment': '生成状态记录表'
-    }
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True, comment="生成ID")
+    __table_args__ = {"comment": "生成状态记录表"}
+    id = Column(
+        Integer, primary_key=True, index=True, autoincrement=True, comment="生成ID"
+    )
     status = Column(Boolean, default=False, comment="生成状态")
-    created_at = Column(DateTime, default=datetime.now, nullable=False, comment="创建时间")
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, comment="更新时间")
+    created_at = Column(
+        DateTime, default=datetime.now, nullable=False, comment="创建时间"
+    )
+    updated_at = Column(
+        DateTime, default=datetime.now, onupdate=datetime.now, comment="更新时间"
+    )
 
 
 # f风格  有很多图, 标签字段
@@ -27,10 +30,9 @@ class PatternPreset(Base):
     """
     纹理, 纹理风格
     """
+
     __tablename__ = "pattern_preset"
-    __table_args__ = {
-        'comment': '纹理'
-    }
+    __table_args__ = {"comment": "纹理"}
     id: Mapped[int] = mapped_column(primary_key=True, index=True, comment="纹理ID")
     name: Mapped[str] = mapped_column(String(128), comment="纹理名称")
     image: Mapped[str] = mapped_column(String(512), comment="图像链接")
@@ -42,8 +44,12 @@ class PatternPreset(Base):
     parameters: Mapped[Optional[List[str]]] = mapped_column(JSON, comment="命令参数")
     # aspect: Mapped[Optional[str]] = mapped_column(String(12), comment="图像宽高比")
     description: Mapped[Optional[str]] = mapped_column(String(1024), comment="风格描述")
-    created_at: Mapped[datetime] = mapped_column(default=datetime.now, comment="创建时间")
-    updated_at: Mapped[datetime] = mapped_column(default=datetime.now, onupdate=datetime.now, comment="更新时间")
+    created_at: Mapped[datetime] = mapped_column(
+        default=datetime.now, comment="创建时间"
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        default=datetime.now, onupdate=datetime.now, comment="更新时间"
+    )
 
 
 class PatternPresetCategory(Base):
@@ -51,34 +57,53 @@ class PatternPresetCategory(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True, comment="纹理类别ID")
     name: Mapped[str] = mapped_column(String(128), comment="纹理类别")
     # pattern_presets: Mapped["PatternPreset"] = relationship(back_populates="pattern_preset_category")
-    created_at: Mapped[datetime] = mapped_column(default=datetime.now, comment="创建时间")
-    updated_at: Mapped[datetime] = mapped_column(default=datetime.now, onupdate=datetime.now, comment="更新时间")
+    created_at: Mapped[datetime] = mapped_column(
+        default=datetime.now, comment="创建时间"
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        default=datetime.now, onupdate=datetime.now, comment="更新时间"
+    )
 
 
 class Instructions(Base):
     __tablename__ = "instructions"
-    __table_args__ = {
-        'comment': '提示指令'
-    }
+    __table_args__ = {"comment": "提示指令"}
     id: Mapped[int] = mapped_column(primary_key=True, index=True, comment="指令ID")
     name: Mapped[str] = mapped_column(String(128), comment="指令名称")
     description: Mapped[Optional[str]] = mapped_column(String(1024), comment="指令描述")
-    created_at: Mapped[datetime] = mapped_column(default=datetime.now, comment="创建时间")
-    updated_at: Mapped[datetime] = mapped_column(default=datetime.now, onupdate=datetime.now, comment="更新时间")
+    created_at: Mapped[datetime] = mapped_column(
+        default=datetime.now, comment="创建时间"
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        default=datetime.now, onupdate=datetime.now, comment="更新时间"
+    )
 
 
 class LLM(Base):
     __tablename__ = "llm"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(String(50), unique=True, index=True, nullable=False, comment="模型名称")
-    description: Mapped[str] = mapped_column(String(500), nullable=True, comment="详细说明")
-    provider: Mapped[str] = mapped_column(String(50), nullable=True, comment='供应商')
-    base_url: Mapped[str] = mapped_column(String(100), nullable=True, comment='基础URL')
-    api_key: Mapped[str] = mapped_column(String(100), nullable=False, comment='API Key')
+    name: Mapped[str] = mapped_column(
+        String(50), unique=True, index=True, nullable=False, comment="模型名称"
+    )
+    description: Mapped[str] = mapped_column(
+        String(500), nullable=True, comment="详细说明"
+    )
+    provider: Mapped[str] = mapped_column(String(50), nullable=True, comment="供应商")
+    base_url: Mapped[str] = mapped_column(String(100), nullable=True, comment="基础URL")
+    api_key: Mapped[str] = mapped_column(String(100), nullable=False, comment="API Key")
     models: Mapped[JSON] = mapped_column(JSON, nullable=True, comment="模型列表")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, nullable=True, comment='创建时间')
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now,
-                                                 onupdate=datetime.now, nullable=True, comment='更新时间')
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.now, nullable=True, comment="创建时间"
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.now,
+        onupdate=datetime.now,
+        nullable=True,
+        comment="更新时间",
+    )
+
+
 # TODO
 # 图像列表
 
