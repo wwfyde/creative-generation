@@ -223,7 +223,7 @@ class CreativeGenerateParams(BaseModel):
     instructions: str | None = Field(
         None, description="翻译指令, 控制如何翻译输入的prompt"
     )
-    texture_id: str | None = Field(None, description="纹理ID")
+    texture_id: str | int | None = Field(None, description="纹理ID")
     wait_result: bool | None = Field(False, description="是否等待结果")
 
     model_config = ConfigDict(
@@ -233,6 +233,7 @@ class CreativeGenerateParams(BaseModel):
                 "parameter": {"aspect": "4:3", "tile": False},
                 "prompt": "条形,平滑",
                 "texture_id": 3,
+                "wait_result": True,
             }
         }
     )
@@ -313,6 +314,7 @@ async def generate_creative(
                         "message": "解析结果失败",
                         "data": None,
                     }
+            logger.debug("轮询结果中...")
             time.sleep(10)
             pass
 
