@@ -13,7 +13,7 @@ from app.config import settings
 
 limiter = Limiter(key_func=get_remote_address)
 
-app = FastAPI()
+app = FastAPI(title="创意生成")
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
@@ -35,7 +35,6 @@ class Item(BaseModel):
 @app.get("/")
 async def root():
     return RedirectResponse("/docs")
-
 
 
 app.include_router(api.router, prefix=settings.api_prefix)

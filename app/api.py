@@ -229,7 +229,7 @@ class CreativeGenerateParams(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "config": {"batch_size": 4},
+                # "config": {"batch_size": 4},
                 "parameter": {"aspect": "4:3", "tile": False},
                 "prompt": "条形,平滑",
                 "texture_id": 3,
@@ -239,7 +239,7 @@ class CreativeGenerateParams(BaseModel):
     )
 
 
-@router.post("/creative_generate")
+@router.post("/creative_generate", summary="【必需】创意生成接口")
 async def generate_creative(
     params: CreativeGenerateParams,
     db: Session = Depends(get_db),
@@ -247,7 +247,19 @@ async def generate_creative(
     cache: Redis = Depends(get_redis_cache),
 ):
     """
-    生成创意
+    创意生成 一共返回四张,返回单张图片分辨率为2000*2000, 无缝模式(tiled, seamless)则为1000*1000. 主要有两种方式, config 参数为可选, 不传
+    方式一: 不走数据库, 直接传入prompt, 可选自定义指令, 用于控制如何翻译和扩展prompt
+    方式二: 通过`GET /api/creative_generate/preset` 获取预设列表, 然后通过预设id texture_id 比如(texture_id=3)来获取预设的instructions, parameter, 依然需要传入prompt
+
+    关于获取返回结果:
+    方式一: 不等待结果设置wait_result=False(默认值, 可不传), 返回请求ID, 通过轮询接口`GET /api/creative_generate/result/{request_id}`获取结果
+    方式二: wait_result=True 接口阻塞, 知道结果返回为止并返回生成结果
+    parmas:
+        prompt: str 必选, 用于对图像生成主体,风格等描述
+        instructions: str 可选, 用于覆盖默认的指令
+        parameter: dict | None, 用于控制效果, 比如aspect: 图片宽高比, tile 是否无缝纹理(四方连续)
+        wait_result: bool 可选, 接口是否等待结果, 默认False,
+
     :return:
     """
     if not params.request_id:
@@ -345,7 +357,7 @@ async def get_preset_texture(
     db: Session = Depends(get_db),
 ):
     """
-    获取预设纹理
+    获取预设纹理, 通过传入预设配置id来实现不同的生成风格, 避免用户自己来对风格进行约束
     :return:
     """
     stmt = select(PatternPreset)
