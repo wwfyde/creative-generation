@@ -247,11 +247,12 @@ async def generate_creative(
     cache: Redis = Depends(get_redis_cache),
 ):
     """
-    创意生成 一共返回四张,返回单张图片分辨率为2000*2000, 无缝模式(tiled, seamless)则为1000*1000. 主要有两种方式, config 参数为可选, 不传
+    # 创意生成
+     一共返回四张,返回单张图片分辨率为2000×2000, 无缝模式(tiled, seamless)则为1000×1000. 主要有两种方式, config 参数为可选, 不传
     方式一: 不走数据库, 直接传入prompt, 可选自定义指令, 用于控制如何翻译和扩展prompt
     方式二: 通过`GET /api/creative_generate/preset` 获取预设列表, 然后通过预设id texture_id 比如(texture_id=3)来获取预设的instructions, parameter, 依然需要传入prompt
 
-    关于获取返回结果:
+    ## 关于获取返回结果:
     方式一: 不等待结果设置wait_result=False(默认值, 可不传), 返回请求ID, 通过轮询接口`GET /api/creative_generate/result/{request_id}`获取结果
     方式二: wait_result=True 接口阻塞, 知道结果返回为止并返回生成结果
     parmas:

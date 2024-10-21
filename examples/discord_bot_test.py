@@ -35,4 +35,4 @@ async def on_message(message):
 
 
 if __name__ == "__main__":
-    bot.run("MTIwOTczMTkxMzI4MDAwNDEzOA.GlC2NK._ojHyMxThSuQuqJOtiY47x90_nTzvRwnjDaGfQ")
+    bot.run("token")
