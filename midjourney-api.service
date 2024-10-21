@@ -1,0 +1,16 @@
+[Unit]
+Description=Midjourney API Service
+After=midjourney-prod-bot.service
+
+[Service]
+Type=simple
+User=molook
+WorkingDirectory=/home/molook/projects/midjourney-prod
+ExecStart=/home/molook/projects/midjourney-prod/venv/bin/uvicorn main:app --host 0.0.0.0 --port 9112
+StandardOutput=file:/home/molook/projects/midjourney-prod/api.log
+StandardError=inherit
+Restart=always
+
+
+[Install]
+WantedBy=multi-user.target
