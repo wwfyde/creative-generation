@@ -126,7 +126,7 @@ async def on_message(message: Message):
                 logger.debug(f"将{request_id}生成结果发送到RabbitMQ: {body_str}")
             # TODO 将数据发送到redis
 
-            r = await redis.from_url(settings.redis_dsn.unicode_string())
+            r = await redis.from_url(str(settings.redis_dsn))
 
             await r.set(
                 f"{settings.redis_texture_generation_result}:{request_id}",

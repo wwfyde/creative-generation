@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     prompt_suffix: str
     redis_texture_generation_result: str = "molook:texture"
     redis_expire_time: int = 60 * 60 * 24 * 15  # 15天
-    redis_dsn: RedisDsn | str = "redis://@localhost:6379/0"
+    redis_dsn: RedisDsn = "redis://@localhost:6379/0"
     wait_max_seconds: int = 60 * 5  # 5分钟
 
     mysql_dsn: str | MySQLDsn = (
