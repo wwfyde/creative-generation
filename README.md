@@ -1,5 +1,22 @@
 # Universal API Service
 
+> [!Warn]
+>
+> 注意discord api 更新导致的任务分发失效
+> 需要在配置文件中修改 APPLICATION_ID 或者
+> /app/discord_api.py imagine 函数中的 data 的version 和 id 参数变更, 具体取决于discord 发送时如何调用
+>
+>
+
+## 主要服务
+
+部署地址: 104(10.31.0.104), ~/projects/midjourney-prod
+服务部署方式: systemd
+自动重启: 支持
+api: 生成图片服务, 端口: 8301 ,
+bot: 机器人服务
+consumer: 消费者服务
+
 ## Overview
 
 使用 discord 的机器人，封装 midjourney 的生成服务。
